@@ -1,98 +1,587 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
+interface MatchProfile {
+  id: string;
+  full_name: string;
+  dob: string;
+  gender: string;
+  occupation: string | null;
+  current_place: string | null;
+  native_place: string | null;
+  community: string | null;
+  salary: number | null;
+  salary_currency: string;
+  cover_image_path: string | null;
+  signed_cover_url?: string | null;
+  bureau: {
+    name: string;
+  };
 }
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+interface HomeScreenProps {
+  onViewProfile?: (profileId: string) => void;
+}
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
+  const { profile, signOut, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [matches, setMatches] = useState<MatchProfile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [bureauName, setBureauName] = useState('My Bureau');
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out of ManaPelli?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: signOut },
+    ]);
+  };
 
-        {Platform.OS === 'web' && <WebBadge />}
+  const handleCardPress = (id: string) => {
+    if (onViewProfile) {
+      onViewProfile(id);
+    } else {
+      router.push(`/profile/${id}`);
+    }
+  };
+
+  const fetchBureauDetails = async (bureauId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('bureaus')
+        .select('name')
+        .eq('id', bureauId)
+        .single();
+      if (data) {
+        setBureauName(data.name);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchMatches = async () => {
+    if (!profile) return;
+    setLoading(true);
+    try {
+      const oppositeGender = profile.gender === 'male' ? 'female' : 'male';
+      const { data, error } = await supabase
+        .rpc('list_peer_profiles', { _bureau_id: profile.bureau_id });
+
+      if (error) {
+        console.error(error);
+      } else if (data) {
+        const oppositeMatches = (data as MatchProfile[]).filter(
+          (item) => item.gender === oppositeGender
+        );
+
+        const imagePaths = oppositeMatches
+          .map((m) => m.cover_image_path)
+          .filter((p): p is string => !!p);
+
+        if (imagePaths.length > 0) {
+          const { data: signedData } = await supabase
+            .storage
+            .from('profile-images')
+            .createSignedUrls(imagePaths, 3600);
+
+          if (signedData) {
+            const urlMap = new Map<string, string>();
+            signedData.forEach((item) => {
+              if (item.signedUrl && item.path) {
+                urlMap.set(item.path, item.signedUrl);
+              }
+            });
+
+            const matchesWithUrls = oppositeMatches.map((m) => ({
+              ...m,
+              signed_cover_url: m.cover_image_path ? urlMap.get(m.cover_image_path) || null : null,
+            }));
+            setMatches(matchesWithUrls);
+          } else {
+            setMatches(oppositeMatches);
+          }
+        } else {
+          setMatches(oppositeMatches);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (profile) {
+      fetchBureauDetails(profile.bureau_id);
+      fetchMatches();
+    }
+  }, [profile]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchMatches();
+    setRefreshing(false);
+  };
+
+  const calculateAge = (dobString: string) => {
+    if (!dobString) return 0;
+    const today = new Date();
+    const birthDate = new Date(dobString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const formatSalary = (salary: number | null, currency: string) => {
+    if (!salary) return 'Not Specified';
+    const amount = Number(salary);
+    if (amount >= 100000) {
+      const lakhs = amount / 100000;
+      return `${currency} ${lakhs.toFixed(1)} Lakhs/yr`;
+    }
+    return `${currency} ${amount.toLocaleString()}/yr`;
+  };
+
+  if (authLoading || (loading && matches.length === 0)) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#8B1E3F" />
+      </View>
+    );
+  }
+
+  // Handle Pending / Rejected profiles
+  if (profile && profile.status !== 'approved') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.statusContentContainer}>
+          <View style={styles.statusHeartBadge}>
+            <Text style={styles.statusHeartIcon}>❦</Text>
+          </View>
+          <Text style={styles.bureauHeader}>{bureauName}</Text>
+          
+          <View style={styles.statusCard}>
+            {profile.status === 'pending' ? (
+              <>
+                <Text style={styles.statusTitle}>Profile Verification Pending</Text>
+                <Text style={styles.statusDescription}>
+                  Thank you for submitting your details. The bureau team is currently reviewing your profile.
+                </Text>
+                <View style={styles.statusAlert}>
+                  <Text style={styles.statusAlertText}>
+                    Our typical verification takes under 24 hours. Once approved, you will see all matching verified profiles from your community here.
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.statusTitle, { color: '#B23B3B' }]}>Profile Rejected</Text>
+                <Text style={styles.statusDescription}>
+                  Your profile could not be approved by the bureau admin.
+                </Text>
+                {profile.rejection_reason && (
+                  <View style={[styles.statusAlert, { backgroundColor: '#FDF5F5', borderColor: '#F5C6C6' }]}>
+                    <Text style={[styles.statusAlertText, { color: '#B23B3B' }]}>
+                      Reason: {profile.rejection_reason}
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+            
+            <View style={styles.contactDetails}>
+              <Text style={styles.contactLabel}>For assistance, contact your bureau:</Text>
+              <Text style={styles.contactEmail}>hello@manapelli.in</Text>
+            </View>
+          </View>
+        </View>
       </SafeAreaView>
-    </ThemedView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Text style={styles.logoText}>ManaPelli</Text>
+          <View style={styles.bureauBadge}>
+            <Text style={styles.bureauBadgeText}>{bureauName}</Text>
+          </View>
+        </View>
+        <TouchableOpacity onPress={handleSignOut} style={styles.signOutHeaderBtn}>
+          <Text style={styles.signOutHeaderText}>Log Out</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Match List */}
+      <FlatList
+        data={matches}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8B1E3F']} />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No verified matches found in your community yet.</Text>
+            <Text style={styles.emptySubtext}>Check back later as new members get approved.</Text>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const age = calculateAge(item.dob);
+          const imageUri = item.signed_cover_url || null;
+
+          return (
+            <TouchableOpacity 
+              style={styles.card} 
+              activeOpacity={0.9}
+              onPress={() => handleCardPress(item.id)}
+            >
+              <View style={styles.cardImageContainer}>
+                {imageUri ? (
+                  <Image 
+                    source={{ uri: imageUri }} 
+                    style={styles.cardImage} 
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={[styles.cardImage, styles.placeholderImage]}>
+                    <Text style={styles.placeholderIcon}>❦</Text>
+                  </View>
+                )}
+                <View style={styles.communityTag}>
+                  <Text style={styles.communityTagText}>{item.community || 'Community'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.cardDetails}>
+                <Text style={styles.cardName}>
+                  {item.full_name}, <Text style={styles.cardAge}>{age}</Text>
+                </Text>
+                
+                <Text style={styles.cardSub}>
+                  {item.occupation || 'Private Service'}
+                </Text>
+
+                <View style={styles.metaRow}>
+                  <View style={styles.metaItem}>
+                    <Text style={styles.metaLabel}>Lives in</Text>
+                    <Text style={styles.metaValue}>{item.current_place || 'Not specified'}</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Text style={styles.metaLabel}>Native</Text>
+                    <Text style={styles.metaValue}>{item.native_place || 'Not specified'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.salaryContainer}>
+                  <Text style={styles.salaryLabel}>Annual Income</Text>
+                  <Text style={styles.salaryValue}>
+                    {formatSalary(item.salary, item.salary_currency)}
+                  </Text>
+                </View>
+
+                <Text style={styles.viewProfileBtn}>View Complete Biodata →</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FAF7F2',
+  },
+  centerContainer: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FAF7F2',
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFEAE2',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    justifyContent: 'space-between',
   },
-  heroSection: {
+  logoText: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C1B1F',
+  },
+  bureauBadge: {
+    backgroundColor: '#FAF0E6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F0E6D8',
+  },
+  bureauBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B1E3F',
+  },
+  signOutHeaderBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E3CFCF',
+    backgroundColor: '#FFFFFF',
+  },
+  signOutHeaderText: {
+    color: '#B23B3B',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#EFEAE2',
+  },
+  cardImageContainer: {
+    height: 220,
+    position: 'relative',
+    backgroundColor: '#EFEAE2',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholderImage: {
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    backgroundColor: '#F3ECE0',
   },
-  title: {
-    textAlign: 'center',
+  placeholderIcon: {
+    fontSize: 48,
+    color: '#D4C5B3',
   },
-  code: {
+  communityTag: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    backgroundColor: '#8B1E3F',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  communityTagText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
     textTransform: 'uppercase',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  cardDetails: {
+    padding: 20,
+  },
+  cardName: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#2C1B1F',
+  },
+  cardAge: {
+    fontWeight: 'normal',
+    color: '#706064',
+  },
+  cardSub: {
+    fontSize: 14,
+    color: '#706064',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F5ECE2',
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  metaItem: {
+    flex: 1,
+  },
+  metaLabel: {
+    fontSize: 11,
+    color: '#998E90',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+  },
+  metaValue: {
+    fontSize: 14,
+    color: '#2C1B1F',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  salaryContainer: {
+    marginBottom: 16,
+  },
+  salaryLabel: {
+    fontSize: 11,
+    color: '#998E90',
+    textTransform: 'uppercase',
+    fontWeight: '600',
+  },
+  salaryValue: {
+    fontSize: 15,
+    color: '#2C1B1F',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  viewProfileBtn: {
+    fontSize: 14,
+    color: '#8B1E3F',
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 60,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#706064',
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: '#998E90',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  statusContentContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  statusHeartBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#8B1E3F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  statusHeartIcon: {
+    fontSize: 32,
+    color: '#F4E8D1',
+  },
+  bureauHeader: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#2C1B1F',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  statusCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#EFEAE2',
+    alignItems: 'center',
+  },
+  statusTitle: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#8B1E3F',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  statusDescription: {
+    fontSize: 14,
+    color: '#706064',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  statusAlert: {
+    backgroundColor: '#FAF5EE',
+    borderWidth: 1,
+    borderColor: '#EFE3D3',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  statusAlertText: {
+    fontSize: 13,
+    color: '#7C674F',
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  contactDetails: {
+    borderTopWidth: 1,
+    borderTopColor: '#F5ECE2',
+    width: '100%',
+    paddingTop: 16,
+    alignItems: 'center',
+  },
+  contactLabel: {
+    fontSize: 12,
+    color: '#998E90',
+    marginBottom: 4,
+  },
+  contactEmail: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B1E3F',
   },
 });

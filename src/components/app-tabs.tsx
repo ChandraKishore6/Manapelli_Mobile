@@ -1,32 +1,115 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
+import React, { useState } from 'react';
+import {
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import HomeScreen from '../app/index';
+import MyProfileScreen from '../app/explore';
+import ProfileDetailScreen from '../app/profile/[id]';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const [activeTab, setActiveTab] = useState<'home' | 'profile'>('home');
+  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
+
+  if (viewingProfileId) {
+    return (
+      <ProfileDetailScreen
+        id={viewingProfileId}
+        onBack={() => setViewingProfileId(null)}
+      />
+    );
+  }
 
   return (
-    <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
+    <View style={styles.container}>
+      {/* Active Screen Container */}
+      <View style={styles.screenContainer}>
+        {activeTab === 'home' ? (
+          <HomeScreen onViewProfile={(id) => setViewingProfileId(id)} />
+        ) : (
+          <MyProfileScreen />
+        )}
+      </View>
 
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+      {/* Tab Bar */}
+      <SafeAreaView style={styles.tabBarSafeArea}>
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab('home')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActiveText]}>
+              home
+            </Text>
+            <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActiveText]}>
+              Matches
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab('profile')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabIcon, activeTab === 'profile' && styles.tabActiveText]}>
+              person
+            </Text>
+            <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabActiveText]}>
+              My Profile
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FAF7F2',
+  },
+  screenContainer: {
+    flex: 1,
+  },
+  tabBarSafeArea: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EFEAE2',
+  },
+  tabBar: {
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingBottom: Platform.OS === 'ios' ? 0 : 4,
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    height: '100%',
+  },
+  tabIcon: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: 14,
+    color: '#998E90',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#998E90',
+    marginTop: 4,
+  },
+  tabActiveText: {
+    color: '#8B1E3F',
+  },
+});
