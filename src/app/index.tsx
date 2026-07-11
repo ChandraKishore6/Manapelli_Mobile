@@ -21,7 +21,7 @@ import { supabase } from '../lib/supabase';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const cardWidth = SCREEN_WIDTH - 32;
 
-interface MatchProfile {
+export interface MatchProfile {
   id: string;
   full_name: string;
   dob: string;
@@ -45,16 +45,20 @@ interface HomeScreenProps {
   onViewProfile?: (profileId: string) => void;
 }
 
-function MatchCard({
+export function MatchCard({
   item,
   onPress,
   calculateAge,
   formatSalary,
+  isFavorite = false,
+  onToggleFavorite,
 }: {
   item: MatchProfile;
   onPress: () => void;
   calculateAge: (dobString: string) => number;
   formatSalary: (salary: number | null, currency: string) => string;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -169,6 +173,20 @@ function MatchCard({
         <View style={styles.communityTag}>
           <Text style={styles.communityTagText}>{item.community || 'Community'}</Text>
         </View>
+
+        {/* Favorite Heart Button */}
+        {onToggleFavorite && (
+          <TouchableOpacity
+            style={styles.heartButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              onToggleFavorite();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.heartIconText}>{isFavorite ? '❤️' : '🤍'}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.cardDetails}>
@@ -208,6 +226,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const { profile, signOut, loading: authLoading } = useAuth();
   const router = useRouter();
   const [matches, setMatches] = useState<MatchProfile[]>([]);
+  const [favoritesList, setFavoritesList] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [bureauName, setBureauName] = useState('My Bureau');
@@ -236,6 +255,56 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
         .single();
       if (data) {
         setBureauName(data.name);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchFavorites = async () => {
+    if (!profile) return;
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('profile_id')
+        .eq('user_id', profile.id);
+      if (error) {
+        console.error('Error fetching favorites:', error.message);
+      } else if (data) {
+        setFavoritesList(data.map((f) => f.profile_id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleFavorite = async (profileId: string) => {
+    if (!profile) return;
+    const isFav = favoritesList.includes(profileId);
+    try {
+      if (isFav) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', profile.id)
+          .eq('profile_id', profileId);
+        if (error) {
+          Alert.alert('Error', error.message);
+        } else {
+          setFavoritesList((prev) => prev.filter((id) => id !== profileId));
+        }
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            user_id: profile.id,
+            profile_id: profileId,
+          });
+        if (error) {
+          Alert.alert('Error', error.message);
+        } else {
+          setFavoritesList((prev) => [...prev, profileId]);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -315,13 +384,14 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
   useEffect(() => {
     if (profile) {
       fetchBureauDetails(profile.bureau_id);
+      fetchFavorites();
       fetchMatches();
     }
   }, [profile]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchMatches();
+    await Promise.all([fetchFavorites(), fetchMatches()]);
     setRefreshing(false);
   };
 
@@ -439,6 +509,8 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
             onPress={() => handleCardPress(item.id)}
             calculateAge={calculateAge}
             formatSalary={formatSalary}
+            isFavorite={favoritesList.includes(item.id)}
+            onToggleFavorite={() => toggleFavorite(item.id)}
           />
         )}
       />
@@ -655,6 +727,26 @@ const styles = StyleSheet.create({
   },
   inactiveDot: {
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  heartButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  heartIconText: {
+    fontSize: 18,
   },
   emptyContainer: {
     padding: 40,

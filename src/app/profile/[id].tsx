@@ -60,6 +60,8 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [signedCoverUrl, setSignedCoverUrl] = useState<string | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   const fetchProfileDetails = async () => {
     if (!id) return;
@@ -132,8 +134,67 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
     }
   };
 
+  const checkFavoriteStatus = async () => {
+    if (!id) return;
+    try {
+      const { data: meUser } = await supabase.auth.getUser();
+      if (!meUser?.user) return;
+      const { data } = await supabase
+        .from('favorites')
+        .select('id')
+        .eq('user_id', meUser.user.id)
+        .eq('profile_id', id)
+        .limit(1);
+      if (data && data.length > 0) {
+        setIsFavorite(true);
+      } else {
+        setIsFavorite(false);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!id || favoriteLoading) return;
+    setFavoriteLoading(true);
+    try {
+      const { data: meUser } = await supabase.auth.getUser();
+      if (!meUser?.user) return;
+      if (isFavorite) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', meUser.user.id)
+          .eq('profile_id', id);
+        if (!error) {
+          setIsFavorite(false);
+        } else {
+          Alert.alert('Error', error.message);
+        }
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            user_id: meUser.user.id,
+            profile_id: id,
+          });
+        if (!error) {
+          setIsFavorite(true);
+        } else {
+          Alert.alert('Error', error.message);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfileDetails();
+    checkFavoriteStatus();
   }, [id]);
 
   const calculateAge = (dobString: string) => {
@@ -233,9 +294,14 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
         <Text style={styles.headerTitle} numberOfLines={1}>
           {profile.full_name}'s Biodata
         </Text>
-        <TouchableOpacity onPress={handleSignOut} style={styles.signOutHeaderBtn}>
-          <Text style={styles.signOutHeaderText}>Log Out</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={toggleFavorite} style={styles.favoriteHeaderBtn} disabled={favoriteLoading}>
+            <Text style={styles.favoriteHeaderBtnText}>{isFavorite ? '❤️' : '🤍'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSignOut} style={styles.signOutHeaderBtn}>
+            <Text style={styles.signOutHeaderText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -467,6 +533,18 @@ const styles = StyleSheet.create({
     color: '#B23B3B',
     fontSize: 12,
     fontWeight: '600',
+  },
+  favoriteHeaderBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EFEAE2',
+    backgroundColor: '#FFFFFF',
+    marginRight: 8,
+  },
+  favoriteHeaderBtnText: {
+    fontSize: 14,
   },
   bottomBackButton: {
     backgroundColor: '#8B1E3F',

@@ -11,9 +11,10 @@ import {
 import HomeScreen from '../app/index';
 import MyProfileScreen from '../app/explore';
 import ProfileDetailScreen from '../app/profile/[id]';
+import FavoritesScreen from '../app/favorites';
 
 export default function AppTabs() {
-  const [activeTab, setActiveTab] = useState<'home' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'favorites' | 'profile'>('home');
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
 
   if (viewingProfileId) {
@@ -31,6 +32,8 @@ export default function AppTabs() {
       <View style={styles.screenContainer}>
         {activeTab === 'home' ? (
           <HomeScreen onViewProfile={(id) => setViewingProfileId(id)} />
+        ) : activeTab === 'favorites' ? (
+          <FavoritesScreen onViewProfile={(id) => setViewingProfileId(id)} />
         ) : (
           <MyProfileScreen />
         )}
@@ -49,6 +52,19 @@ export default function AppTabs() {
             </Text>
             <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActiveText]}>
               Matches
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab('favorites')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabIcon, activeTab === 'favorites' && styles.tabActiveText]}>
+              heart
+            </Text>
+            <Text style={[styles.tabLabel, activeTab === 'favorites' && styles.tabActiveText]}>
+              Favorites
             </Text>
           </TouchableOpacity>
 
