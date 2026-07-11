@@ -267,7 +267,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
       const { data, error } = await supabase
         .from('favorites')
         .select('profile_id')
-        .eq('user_id', profile.id);
+        .eq('user_id', profile.user_id);
       if (error) {
         console.error('Error fetching favorites:', error.message);
       } else if (data) {
@@ -286,7 +286,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
         const { error } = await supabase
           .from('favorites')
           .delete()
-          .eq('user_id', profile.id)
+          .eq('user_id', profile.user_id)
           .eq('profile_id', profileId);
         if (error) {
           Alert.alert('Error', error.message);
@@ -297,7 +297,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
         const { error } = await supabase
           .from('favorites')
           .insert({
-            user_id: profile.id,
+            user_id: profile.user_id,
             profile_id: profileId,
           });
         if (error) {

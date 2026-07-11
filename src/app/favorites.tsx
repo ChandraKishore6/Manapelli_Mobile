@@ -32,7 +32,7 @@ export default function FavoritesScreen({ onViewProfile }: FavoritesScreenProps)
       const { data, error } = await supabase
         .from('favorites')
         .select('profile_id, profiles (*)')
-        .eq('user_id', profile.id);
+        .eq('user_id', profile.user_id);
 
       if (error) {
         console.error('Error fetching favorites:', error.message);
@@ -145,7 +145,7 @@ export default function FavoritesScreen({ onViewProfile }: FavoritesScreenProps)
       const { error } = await supabase
         .from('favorites')
         .delete()
-        .eq('user_id', profile.id)
+        .eq('user_id', profile.user_id)
         .eq('profile_id', profileId);
 
       if (error) {

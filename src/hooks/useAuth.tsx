@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 
 export interface UserProfile {
   id: string;
+  user_id: string;
   bureau_id: string;
   full_name: string;
   email: string | null;
