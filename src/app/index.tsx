@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Platform,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,6 +17,9 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const cardWidth = SCREEN_WIDTH - 32;
 
 interface MatchProfile {
   id: string;
@@ -28,6 +33,8 @@ interface MatchProfile {
   salary: number | null;
   salary_currency: string;
   cover_image_path: string | null;
+  image_paths?: string[];
+  signed_images?: string[];
   signed_cover_url?: string | null;
   bureau: {
     name: string;
@@ -36,6 +43,165 @@ interface MatchProfile {
 
 interface HomeScreenProps {
   onViewProfile?: (profileId: string) => void;
+}
+
+function MatchCard({
+  item,
+  onPress,
+  calculateAge,
+  formatSalary,
+}: {
+  item: MatchProfile;
+  onPress: () => void;
+  calculateAge: (dobString: string) => number;
+  formatSalary: (salary: number | null, currency: string) => string;
+}) {
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const displayedImages = item.signed_images && item.signed_images.length > 0
+    ? item.signed_images
+    : (item.signed_cover_url ? [item.signed_cover_url] : []);
+
+  const handleNextPhoto = (e: any) => {
+    e.stopPropagation();
+    if (activeImageIndex < displayedImages.length - 1) {
+      const nextIdx = activeImageIndex + 1;
+      setActiveImageIndex(nextIdx);
+      scrollViewRef.current?.scrollTo({ x: nextIdx * cardWidth, animated: true });
+    }
+  };
+
+  const handlePrevPhoto = (e: any) => {
+    e.stopPropagation();
+    if (activeImageIndex > 0) {
+      const prevIdx = activeImageIndex - 1;
+      setActiveImageIndex(prevIdx);
+      scrollViewRef.current?.scrollTo({ x: prevIdx * cardWidth, animated: true });
+    }
+  };
+
+  return (
+    <View style={styles.card}>
+      {/* Images Carousel */}
+      <View style={styles.cardImageContainer}>
+        {displayedImages.length > 0 ? (
+          <View style={{ position: 'relative', width: '100%', height: 220 }}>
+            <ScrollView
+              ref={scrollViewRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={(event) => {
+                const slideSize = event.nativeEvent.layoutMeasurement.width;
+                if (slideSize > 0) {
+                  const index = event.nativeEvent.contentOffset.x / slideSize;
+                  setActiveImageIndex(Math.round(index));
+                }
+              }}
+              scrollEventThrottle={200}
+            >
+              {displayedImages.map((url, i) => (
+                <TouchableOpacity
+                  key={i}
+                  activeOpacity={0.9}
+                  onPress={onPress}
+                  style={{ width: cardWidth, height: 220 }}
+                >
+                  <Image
+                    source={{ uri: url }}
+                    style={styles.cardImage}
+                    contentFit="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Prev / Next Arrow Overlays */}
+            {displayedImages.length > 1 && (
+              <>
+                {activeImageIndex > 0 && (
+                  <TouchableOpacity
+                    style={[styles.arrowOverlay, styles.leftArrow]}
+                    onPress={handlePrevPhoto}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.arrowText}>‹</Text>
+                  </TouchableOpacity>
+                )}
+                {activeImageIndex < displayedImages.length - 1 && (
+                  <TouchableOpacity
+                    style={[styles.arrowOverlay, styles.rightArrow]}
+                    onPress={handleNextPhoto}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.arrowText}>›</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+
+            {/* Pagination Dots */}
+            {displayedImages.length > 1 && (
+              <View style={styles.paginationContainer}>
+                {displayedImages.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.paginationDot,
+                      i === activeImageIndex ? styles.activeDot : styles.inactiveDot,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={onPress}
+            style={[styles.cardImage, styles.placeholderImage]}
+          >
+            <Text style={styles.placeholderIcon}>❦</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.communityTag}>
+          <Text style={styles.communityTagText}>{item.community || 'Community'}</Text>
+        </View>
+      </View>
+
+      <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.cardDetails}>
+        <Text style={styles.cardName}>
+          {item.full_name}, <Text style={styles.cardAge}>{calculateAge(item.dob)}</Text>
+        </Text>
+
+        <Text style={styles.cardSub}>
+          {item.occupation || 'Private Service'}
+        </Text>
+
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Lives in</Text>
+            <Text style={styles.metaValue}>{item.current_place || 'Not specified'}</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Native</Text>
+            <Text style={styles.metaValue}>{item.native_place || 'Not specified'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.salaryContainer}>
+          <Text style={styles.salaryLabel}>Annual Income</Text>
+          <Text style={styles.salaryValue}>
+            {formatSalary(item.salary, item.salary_currency)}
+          </Text>
+        </View>
+
+        <Text style={styles.viewProfileBtn}>View Complete Biodata →</Text>
+      </TouchableOpacity>
+    </View>
+  );
 }
 
 export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
@@ -91,15 +257,21 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
           (item) => item.gender === oppositeGender
         );
 
-        const imagePaths = oppositeMatches
-          .map((m) => m.cover_image_path)
-          .filter((p): p is string => !!p);
+        // Gather all image paths to sign them in a single batch
+        const allPaths: string[] = [];
+        oppositeMatches.forEach((m) => {
+          if (m.image_paths && m.image_paths.length > 0) {
+            allPaths.push(...m.image_paths);
+          } else if (m.cover_image_path) {
+            allPaths.push(m.cover_image_path);
+          }
+        });
 
-        if (imagePaths.length > 0) {
+        if (allPaths.length > 0) {
           const { data: signedData } = await supabase
             .storage
             .from('profile-images')
-            .createSignedUrls(imagePaths, 3600);
+            .createSignedUrls(allPaths, 3600);
 
           if (signedData) {
             const urlMap = new Map<string, string>();
@@ -109,16 +281,28 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
               }
             });
 
-            const matchesWithUrls = oppositeMatches.map((m) => ({
-              ...m,
-              signed_cover_url: m.cover_image_path ? urlMap.get(m.cover_image_path) || null : null,
-            }));
+            const matchesWithUrls = oppositeMatches.map((m) => {
+              const urls = (m.image_paths || [])
+                .map((path) => urlMap.get(path))
+                .filter((url): url is string => !!url);
+              
+              if (urls.length === 0 && m.cover_image_path) {
+                const coverUrl = urlMap.get(m.cover_image_path);
+                if (coverUrl) urls.push(coverUrl);
+              }
+
+              return {
+                ...m,
+                signed_images: urls,
+                signed_cover_url: m.cover_image_path ? urlMap.get(m.cover_image_path) || null : null,
+              };
+            });
             setMatches(matchesWithUrls);
           } else {
-            setMatches(oppositeMatches);
+            setMatches(oppositeMatches.map(m => ({ ...m, signed_images: [] })));
           }
         } else {
-          setMatches(oppositeMatches);
+          setMatches(oppositeMatches.map(m => ({ ...m, signed_images: [] })));
         }
       }
     } catch (err) {
@@ -249,65 +433,14 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
             <Text style={styles.emptySubtext}>Check back later as new members get approved.</Text>
           </View>
         }
-        renderItem={({ item }) => {
-          const age = calculateAge(item.dob);
-          const imageUri = item.signed_cover_url || null;
-
-          return (
-            <TouchableOpacity 
-              style={styles.card} 
-              activeOpacity={0.9}
-              onPress={() => handleCardPress(item.id)}
-            >
-              <View style={styles.cardImageContainer}>
-                {imageUri ? (
-                  <Image 
-                    source={{ uri: imageUri }} 
-                    style={styles.cardImage} 
-                    contentFit="cover"
-                  />
-                ) : (
-                  <View style={[styles.cardImage, styles.placeholderImage]}>
-                    <Text style={styles.placeholderIcon}>❦</Text>
-                  </View>
-                )}
-                <View style={styles.communityTag}>
-                  <Text style={styles.communityTagText}>{item.community || 'Community'}</Text>
-                </View>
-              </View>
-
-              <View style={styles.cardDetails}>
-                <Text style={styles.cardName}>
-                  {item.full_name}, <Text style={styles.cardAge}>{age}</Text>
-                </Text>
-                
-                <Text style={styles.cardSub}>
-                  {item.occupation || 'Private Service'}
-                </Text>
-
-                <View style={styles.metaRow}>
-                  <View style={styles.metaItem}>
-                    <Text style={styles.metaLabel}>Lives in</Text>
-                    <Text style={styles.metaValue}>{item.current_place || 'Not specified'}</Text>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Text style={styles.metaLabel}>Native</Text>
-                    <Text style={styles.metaValue}>{item.native_place || 'Not specified'}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.salaryContainer}>
-                  <Text style={styles.salaryLabel}>Annual Income</Text>
-                  <Text style={styles.salaryValue}>
-                    {formatSalary(item.salary, item.salary_currency)}
-                  </Text>
-                </View>
-
-                <Text style={styles.viewProfileBtn}>View Complete Biodata →</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={({ item }) => (
+          <MatchCard
+            item={item}
+            onPress={() => handleCardPress(item.id)}
+            calculateAge={calculateAge}
+            formatSalary={formatSalary}
+          />
+        )}
       />
     </SafeAreaView>
   );
@@ -478,6 +611,50 @@ const styles = StyleSheet.create({
     color: '#8B1E3F',
     fontWeight: '700',
     textAlign: 'right',
+  },
+  arrowOverlay: {
+    position: 'absolute',
+    top: '40%',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  leftArrow: {
+    left: 12,
+  },
+  rightArrow: {
+    right: 12,
+  },
+  arrowText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: 'bold',
+    lineHeight: 26,
+  },
+  paginationContainer: {
+    position: 'absolute',
+    bottom: 12,
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paginationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginHorizontal: 3,
+  },
+  activeDot: {
+    backgroundColor: '#8B1E3F',
+    width: 14,
+  },
+  inactiveDot: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
   emptyContainer: {
     padding: 40,

@@ -220,6 +220,20 @@ export default function WelcomeScreen({
           </View>
         </View>
 
+        {/* Separate Browse Bureaus Card */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+          <TouchableOpacity style={styles.browseBureausCardBtn} onPress={handleOpenBrowse}>
+            <View style={styles.browseIconWrapper}>
+              <Text style={styles.browseIcon}>🔍</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.browseTitle}>Browse Live Bureaus</Text>
+              <Text style={styles.browseSubtitle}>Find active marriage bureaus by caste</Text>
+            </View>
+            <Text style={styles.browseArrow}>→</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Action Hubs */}
         <View style={styles.hubsContainer}>
           {/* Member Hub Card */}
@@ -251,12 +265,12 @@ export default function WelcomeScreen({
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.hubTitleBureau}>Marriage Bureaus</Text>
-                <Text style={styles.hubSubtitleBureau}>Independently run matchmaker networks</Text>
+                <Text style={styles.hubSubtitleBureau}>Manage your members & credentials</Text>
               </View>
             </View>
 
-            <TouchableOpacity style={styles.hubPrimaryBtnBureau} onPress={handleOpenBrowse}>
-              <Text style={styles.hubPrimaryBtnTextBureau}>Browse Live Bureaus</Text>
+            <TouchableOpacity style={styles.hubPrimaryBtnBureau} onPress={onShowBureauLogin}>
+              <Text style={styles.hubPrimaryBtnTextBureau}>Sign In as Bureau</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.hubSecondaryBtnBureau} onPress={onShowRegisterBureau}>
@@ -290,10 +304,6 @@ export default function WelcomeScreen({
         <View style={styles.footer}>
           <Text style={styles.footerLogo}>ManaPelli Matrimony</Text>
           <Text style={styles.footerText}>© 2026. All bureaus are independently operated.</Text>
-          
-          <TouchableOpacity style={styles.bureauAdminLoginLink} onPress={onShowBureauLogin}>
-            <Text style={styles.bureauAdminLoginLinkText}>Are you a Bureau Partner? Log In</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -639,6 +649,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  browseBureausCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EFEAE2',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 14,
+    shadowColor: '#2C1B1F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  browseIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FDF7F8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#F6E6E8',
+  },
+  browseIcon: {
+    fontSize: 22,
+  },
+  browseTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2C1B1F',
+  },
+  browseSubtitle: {
+    fontSize: 12,
+    color: '#706064',
+    marginTop: 2,
+  },
+  browseArrow: {
+    fontSize: 18,
+    color: '#8B1E3F',
+    fontWeight: 'bold',
   },
   sectionTitle: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
