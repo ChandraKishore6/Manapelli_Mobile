@@ -197,7 +197,7 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
           </Text>
           <View style={styles.infoBox}>
             <Text style={styles.infoBoxText}>
-              We will review your application and contact you at your email ({contactEmail}) with your bureau dashboard access credentials once approved.
+              We will review your application and contact you at your admin email ({contactEmail}) with your bureau dashboard access credentials once approved.
             </Text>
           </View>
           <TouchableOpacity style={styles.primaryBtn} onPress={onShowWelcome}>
@@ -254,7 +254,7 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
               onChangeText={setBureauName}
             />
 
-            <Text style={styles.label}>Contact Email *</Text>
+            <Text style={styles.label}>Admin Email (for login) *</Text>
             <TextInput
               style={styles.input}
               placeholder="admin@bureauname.com"

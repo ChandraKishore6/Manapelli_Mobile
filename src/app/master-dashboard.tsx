@@ -20,7 +20,8 @@ import { supabase } from '../lib/supabase';
 interface Bureau {
   id: string;
   name: string;
-  contact_email: string;
+  contact_email: string | null;
+  pending_admin_email: string | null;
   contact_phone: string | null;
   location: string | null;
   about_us: string | null;
@@ -601,17 +602,20 @@ export default function MasterDashboard() {
   const handleApproveBureau = async () => {
     if (!selectedBureau) return;
 
-    if (!selectedBureau.contact_email || !selectedBureau.contact_email.trim()) {
+    // Use either pending_admin_email (website registered) or contact_email (mobile registered)
+    const adminEmail = selectedBureau.pending_admin_email || selectedBureau.contact_email;
+
+    if (!adminEmail || !adminEmail.trim()) {
       Alert.alert(
-        'Missing Contact Email',
-        'This bureau application does not have a contact email. Please edit the bureau details to add a contact email before approving.'
+        'Missing Admin Email',
+        'This bureau application does not have an admin email. Please edit the bureau details to add an admin email before approving.'
       );
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(selectedBureau.contact_email.trim())) {
-      Alert.alert('Invalid Email Format', 'The contact email is not valid. Please correct it before approving.');
+    if (!emailRegex.test(adminEmail.trim())) {
+      Alert.alert('Invalid Email Format', 'The admin email is not valid. Please correct it before approving.');
       return;
     }
 
