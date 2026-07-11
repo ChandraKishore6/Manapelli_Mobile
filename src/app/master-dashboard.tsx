@@ -106,6 +106,14 @@ export default function MasterDashboard() {
   const [isApproveProfVisible, setIsApproveProfVisible] = useState(false);
   const [memberPassword, setMemberPassword] = useState('');
 
+  // Password visibility states
+  const [showBurPassword, setShowBurPassword] = useState(false);
+  const [showNewMemPassword, setShowNewMemPassword] = useState(false);
+  const [showEditBurPassword, setShowEditBurPassword] = useState(false);
+  const [showEditProfPassword, setShowEditProfPassword] = useState(false);
+  const [showApproveBurPassword, setShowApproveBurPassword] = useState(false);
+  const [showApproveProfPassword, setShowApproveProfPassword] = useState(false);
+
   const touchStartX = useRef(0);
   const handleTouchStart = (e: any) => {
     touchStartX.current = e.nativeEvent.locationX;
@@ -870,7 +878,20 @@ export default function MasterDashboard() {
             {newBurStatus === 'approved' && (
               <View>
                 <Text style={styles.label}>Admin Account Password *</Text>
-                <TextInput style={styles.input} value={newBurPassword} onChangeText={setNewBurPassword} placeholder="Enter sign-in password" placeholderTextColor="#999" secureTextEntry={false} autoCapitalize="none" />
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={newBurPassword}
+                    onChangeText={setNewBurPassword}
+                    placeholder="Enter sign-in password"
+                    placeholderTextColor="#999"
+                    secureTextEntry={!showBurPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowBurPassword(!showBurPassword)} style={styles.eyeBtn}>
+                    <Text style={styles.eyeText}>{showBurPassword ? '🙈' : '👁️'}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -1010,7 +1031,20 @@ export default function MasterDashboard() {
             <TextInput style={styles.input} value={newMemEmail} onChangeText={setNewMemEmail} placeholder="Email" placeholderTextColor="#999" keyboardType="email-address" autoCapitalize="none" />
 
             <Text style={styles.label}>Issue Sign-in Password *</Text>
-            <TextInput style={styles.input} value={newMemPassword} onChangeText={setNewMemPassword} placeholder="Plain password" placeholderTextColor="#999" secureTextEntry={false} autoCapitalize="none" />
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                value={newMemPassword}
+                onChangeText={setNewMemPassword}
+                placeholder="Plain password"
+                placeholderTextColor="#999"
+                secureTextEntry={!showNewMemPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowNewMemPassword(!showNewMemPassword)} style={styles.eyeBtn}>
+                <Text style={styles.eyeText}>{showNewMemPassword ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.label}>Initial Profile Status</Text>
             <View style={styles.genderContainer}>
@@ -1218,7 +1252,18 @@ export default function MasterDashboard() {
                     <TextInput style={styles.input} value={editBurLoc} onChangeText={setEditBurLoc} />
 
                     <Text style={styles.label}>Admin Password</Text>
-                    <TextInput style={styles.input} value={editBurPassword} onChangeText={setEditBurPassword} secureTextEntry={false} />
+                    <View style={styles.passwordInputContainer}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        value={editBurPassword}
+                        onChangeText={setEditBurPassword}
+                        secureTextEntry={!showEditBurPassword}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity onPress={() => setShowEditBurPassword(!showEditBurPassword)} style={styles.eyeBtn}>
+                        <Text style={styles.eyeText}>{showEditBurPassword ? '🙈' : '👁️'}</Text>
+                      </TouchableOpacity>
+                    </View>
 
                     <Text style={styles.label}>Status (pending / approved / rejected)</Text>
                     <TextInput style={styles.input} value={editBurStatus} onChangeText={(text) => setEditBurStatus(text as any)} />
@@ -1329,6 +1374,39 @@ export default function MasterDashboard() {
                   </View>
                 </View>
               )}
+
+              {/* Approve Bureau Modal inside selectedBureau modal */}
+              <Modal animationType="fade" transparent={true} visible={isApproveVisible} onRequestClose={() => setIsApproveVisible(false)}>
+                <View style={styles.alertOverlay}>
+                  <View style={styles.alertCard}>
+                    <Text style={styles.alertTitle}>Approve Bureau Application</Text>
+                    <Text style={styles.alertDesc}>Enter an access password for their administrator dashboard.</Text>
+                    <View style={styles.passwordInputContainer}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        placeholder="Enter admin password"
+                        placeholderTextColor="#999"
+                        secureTextEntry={!showApproveBurPassword}
+                        value={bureauAdminPassword}
+                        onChangeText={setBureauAdminPassword}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity onPress={() => setShowApproveBurPassword(!showApproveBurPassword)} style={styles.eyeBtn}>
+                        <Text style={styles.eyeText}>{showApproveBurPassword ? '🙈' : '👁️'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.alertButtons}>
+                      <TouchableOpacity style={styles.alertCancel} onPress={() => { setIsApproveVisible(false); setShowApproveBurPassword(false); }}>
+                        <Text style={styles.alertCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.alertConfirm} onPress={handleApproveBureau}>
+                        <Text style={styles.alertConfirmText}>Approve Bureau ✓</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+
             </View>
           </View>
         </Modal>
@@ -1390,7 +1468,18 @@ export default function MasterDashboard() {
                     <TextInput style={styles.input} value={editProfEmail} onChangeText={setEditProfEmail} keyboardType="email-address" />
 
                     <Text style={styles.label}>Password</Text>
-                    <TextInput style={styles.input} value={editProfPassword} onChangeText={setEditProfPassword} secureTextEntry={false} />
+                    <View style={styles.passwordInputContainer}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        value={editProfPassword}
+                        onChangeText={setEditProfPassword}
+                        secureTextEntry={!showEditProfPassword}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity onPress={() => setShowEditProfPassword(!showEditProfPassword)} style={styles.eyeBtn}>
+                        <Text style={styles.eyeText}>{showEditProfPassword ? '🙈' : '👁️'}</Text>
+                      </TouchableOpacity>
+                    </View>
 
                     <Text style={styles.label}>Status (pending / approved / rejected)</Text>
                     <TextInput style={styles.input} value={editProfStatus} onChangeText={(text) => setEditProfStatus(text as any)} />
@@ -1561,63 +1650,43 @@ export default function MasterDashboard() {
                   </View>
                 </View>
               )}
+
+              {/* Approve Profile Modal inside selectedProfile modal */}
+              <Modal animationType="fade" transparent={true} visible={isApproveProfVisible} onRequestClose={() => setIsApproveProfVisible(false)}>
+                <View style={styles.alertOverlay}>
+                  <View style={styles.alertCard}>
+                    <Text style={styles.alertTitle}>Approve Member Profile</Text>
+                    <Text style={styles.alertDesc}>Enter or verify the access password to issue to this member.</Text>
+                    <View style={styles.passwordInputContainer}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        placeholder="Enter member password"
+                        placeholderTextColor="#999"
+                        secureTextEntry={!showApproveProfPassword}
+                        value={memberPassword}
+                        onChangeText={setMemberPassword}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity onPress={() => setShowApproveProfPassword(!showApproveProfPassword)} style={styles.eyeBtn}>
+                        <Text style={styles.eyeText}>{showApproveProfPassword ? '🙈' : '👁️'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.alertButtons}>
+                      <TouchableOpacity style={styles.alertCancel} onPress={() => { setIsApproveProfVisible(false); setMemberPassword(''); setShowApproveProfPassword(false); }}>
+                        <Text style={styles.alertCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.alertConfirm} onPress={handleApproveProfile}>
+                        <Text style={styles.alertConfirmText}>Approve Member ✓</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+
             </View>
           </View>
         </Modal>
       )}
-
-      {/* Approve Bureau Modal */}
-      <Modal animationType="fade" transparent={true} visible={isApproveVisible} onRequestClose={() => setIsApproveVisible(false)}>
-        <View style={styles.alertOverlay}>
-          <View style={styles.alertCard}>
-            <Text style={styles.alertTitle}>Approve Bureau Application</Text>
-            <Text style={styles.alertDesc}>Enter an access password for their administrator dashboard.</Text>
-            <TextInput
-              style={styles.alertInput}
-              placeholder="Enter admin password"
-              placeholderTextColor="#999"
-              secureTextEntry={false}
-              value={bureauAdminPassword}
-              onChangeText={setBureauAdminPassword}
-            />
-            <View style={styles.alertButtons}>
-              <TouchableOpacity style={styles.alertCancel} onPress={() => setIsApproveVisible(false)}>
-                <Text style={styles.alertCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.alertConfirm} onPress={handleApproveBureau}>
-                <Text style={styles.alertConfirmText}>Approve Bureau ✓</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Approve Profile Modal */}
-      <Modal animationType="fade" transparent={true} visible={isApproveProfVisible} onRequestClose={() => setIsApproveProfVisible(false)}>
-        <View style={styles.alertOverlay}>
-          <View style={styles.alertCard}>
-            <Text style={styles.alertTitle}>Approve Member Profile</Text>
-            <Text style={styles.alertDesc}>Enter an access password to issue to this member.</Text>
-            <TextInput
-              style={styles.alertInput}
-              placeholder="Enter member password"
-              placeholderTextColor="#999"
-              secureTextEntry={false}
-              value={memberPassword}
-              onChangeText={setMemberPassword}
-              autoCapitalize="none"
-            />
-            <View style={styles.alertButtons}>
-              <TouchableOpacity style={styles.alertCancel} onPress={() => { setIsApproveProfVisible(false); setMemberPassword(''); }}>
-                <Text style={styles.alertCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.alertConfirm} onPress={handleApproveProfile}>
-                <Text style={styles.alertConfirmText}>Approve Member ✓</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -2247,5 +2316,28 @@ const styles = StyleSheet.create({
   },
   labelPending: {
     color: '#E65100',
+  },
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E6E0D5',
+    borderRadius: 12,
+    backgroundColor: '#FCFAF6',
+    paddingRight: 10,
+    marginBottom: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 48,
+    paddingHorizontal: 14,
+    color: '#2C1B1F',
+    fontSize: 14,
+  },
+  eyeBtn: {
+    padding: 8,
+  },
+  eyeText: {
+    fontSize: 18,
   },
 });

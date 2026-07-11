@@ -100,6 +100,9 @@ export default function BureauDashboard() {
   const [isRejectVisible, setIsRejectVisible] = useState(false);
   const [memberPassword, setMemberPassword] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [showMemberPassword, setShowMemberPassword] = useState(false);
+  const [showNewMemPassword, setShowNewMemPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   // Profile Edit States
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -620,7 +623,20 @@ export default function BureauDashboard() {
             <TextInput style={styles.input} value={newMemEmail} onChangeText={setNewMemEmail} placeholder="Email" placeholderTextColor="#999" keyboardType="email-address" autoCapitalize="none" />
 
             <Text style={styles.label}>Issue Sign-in Password *</Text>
-            <TextInput style={styles.input} value={newMemPassword} onChangeText={setNewMemPassword} placeholder="Enter plain password" placeholderTextColor="#999" secureTextEntry={false} autoCapitalize="none" />
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                value={newMemPassword}
+                onChangeText={setNewMemPassword}
+                placeholder="Enter plain password"
+                placeholderTextColor="#999"
+                secureTextEntry={!showNewMemPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowNewMemPassword(!showNewMemPassword)} style={styles.eyeBtn}>
+                <Text style={styles.eyeText}>{showNewMemPassword ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.label}>Initial Profile Status</Text>
             <View style={styles.genderContainer}>
@@ -707,7 +723,18 @@ export default function BureauDashboard() {
                     <Text style={styles.label}>Contact Email</Text>
                     <TextInput style={styles.input} value={editEmail} onChangeText={setEditEmail} keyboardType="email-address" />
                     <Text style={styles.label}>Password Issued</Text>
-                    <TextInput style={styles.input} value={editPassword} onChangeText={setEditPassword} />
+                    <View style={styles.passwordInputContainer}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        value={editPassword}
+                        onChangeText={setEditPassword}
+                        secureTextEntry={!showEditPassword}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity onPress={() => setShowEditPassword(!showEditPassword)} style={styles.eyeBtn}>
+                        <Text style={styles.eyeText}>{showEditPassword ? '🙈' : '👁️'}</Text>
+                      </TouchableOpacity>
+                    </View>
                     <Text style={styles.label}>Partner Preferences</Text>
                     <TextInput style={[styles.input, styles.textArea]} value={editPartnerPref} onChangeText={setEditPartnerPref} multiline />
                   </View>
@@ -851,63 +878,70 @@ export default function BureauDashboard() {
                   </View>
                 </View>
               )}
+
+              {/* Approve Password Prompt inside Selected Profile Modal */}
+              <Modal animationType="fade" transparent={true} visible={isApproveVisible} onRequestClose={() => setIsApproveVisible(false)}>
+                <View style={styles.alertOverlay}>
+                  <View style={styles.alertCard}>
+                    <Text style={styles.alertTitle}>Approve Member Profile</Text>
+                    <Text style={styles.alertDesc}>Enter or verify the sign-in password for this member. Communicate it to them directly.</Text>
+                    
+                    <View style={styles.passwordInputContainer}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        placeholder="Enter sign-in password"
+                        placeholderTextColor="#999"
+                        secureTextEntry={!showMemberPassword}
+                        value={memberPassword}
+                        onChangeText={setMemberPassword}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity onPress={() => setShowMemberPassword(!showMemberPassword)} style={styles.eyeBtn}>
+                        <Text style={styles.eyeText}>{showMemberPassword ? '🙈' : '👁️'}</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.alertBtnRow}>
+                      <TouchableOpacity style={styles.alertCancelBtn} onPress={() => { setIsApproveVisible(false); setMemberPassword(''); setShowMemberPassword(false); }}>
+                        <Text style={styles.alertCancelBtnText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.alertConfirmBtn} onPress={handleApprove}>
+                        <Text style={styles.alertConfirmBtnText}>Approve ✓</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+
+              {/* Reject Reason Prompt inside Selected Profile Modal */}
+              <Modal animationType="fade" transparent={true} visible={isRejectVisible} onRequestClose={() => setIsRejectVisible(false)}>
+                <View style={styles.alertOverlay}>
+                  <View style={styles.alertCard}>
+                    <Text style={styles.alertTitle}>Reject This Profile?</Text>
+                    <Text style={styles.alertDesc}>Optionally provide a rejection reason:</Text>
+                    <TextInput
+                      style={[styles.alertInput, { height: 80, textAlignVertical: 'top' }]}
+                      placeholder="Reason (optional)"
+                      placeholderTextColor="#999"
+                      value={rejectionReason}
+                      onChangeText={setRejectionReason}
+                      multiline
+                    />
+                    <View style={styles.alertBtnRow}>
+                      <TouchableOpacity style={styles.alertCancelBtn} onPress={() => { setIsRejectVisible(false); setRejectionReason(''); }}>
+                        <Text style={styles.alertCancelBtnText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.alertConfirmBtn, { backgroundColor: '#B23B3B' }]} onPress={handleReject}>
+                        <Text style={styles.alertConfirmBtnText}>Reject</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
             </View>
           </View>
         </Modal>
       )}
-
-      {/* Approve Password Prompt */}
-      <Modal animationType="fade" transparent={true} visible={isApproveVisible} onRequestClose={() => setIsApproveVisible(false)}>
-        <View style={styles.alertOverlay}>
-          <View style={styles.alertCard}>
-            <Text style={styles.alertTitle}>Approve Member Profile</Text>
-            <Text style={styles.alertDesc}>Enter an access password for this member. Communicate it to them directly.</Text>
-            <TextInput
-              style={styles.alertInput}
-              placeholder="Enter sign-in password"
-              placeholderTextColor="#999"
-              secureTextEntry={false}
-              value={memberPassword}
-              onChangeText={setMemberPassword}
-              autoCapitalize="none"
-            />
-            <View style={styles.alertBtnRow}>
-              <TouchableOpacity style={styles.alertCancelBtn} onPress={() => { setIsApproveVisible(false); setMemberPassword(''); }}>
-                <Text style={styles.alertCancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.alertConfirmBtn} onPress={handleApprove}>
-                <Text style={styles.alertConfirmBtnText}>Approve ✓</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Reject Reason Prompt */}
-      <Modal animationType="fade" transparent={true} visible={isRejectVisible} onRequestClose={() => setIsRejectVisible(false)}>
-        <View style={styles.alertOverlay}>
-          <View style={styles.alertCard}>
-            <Text style={styles.alertTitle}>Reject This Profile?</Text>
-            <Text style={styles.alertDesc}>Optionally provide a rejection reason:</Text>
-            <TextInput
-              style={[styles.alertInput, { height: 80, textAlignVertical: 'top' }]}
-              placeholder="Reason (optional)"
-              placeholderTextColor="#999"
-              value={rejectionReason}
-              onChangeText={setRejectionReason}
-              multiline
-            />
-            <View style={styles.alertBtnRow}>
-              <TouchableOpacity style={styles.alertCancelBtn} onPress={() => { setIsRejectVisible(false); setRejectionReason(''); }}>
-                <Text style={styles.alertCancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.alertConfirmBtn, { backgroundColor: '#B23B3B' }]} onPress={handleReject}>
-                <Text style={styles.alertConfirmBtnText}>Reject</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -1265,4 +1299,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   alertConfirmBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E6E0D5',
+    borderRadius: 12,
+    backgroundColor: '#FCFAF6',
+    paddingRight: 10,
+    marginBottom: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 48,
+    paddingHorizontal: 14,
+    color: '#2C1B1F',
+    fontSize: 14,
+  },
+  eyeBtn: {
+    padding: 8,
+  },
+  eyeText: {
+    fontSize: 18,
+  },
 });

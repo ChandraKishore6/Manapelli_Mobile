@@ -24,6 +24,13 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const getThemeColor = () => {
+    if (portalType === 'bureau_admin') return '#1B365D';
+    if (portalType === 'master_admin') return '#2F3E46';
+    return '#8B1E3F';
+  };
 
   const getPortalTitle = () => {
     switch (portalType) {
@@ -100,7 +107,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onShowWelcome} style={styles.backButton}>
-            <Text style={styles.backArrow}>←</Text>
+            <Text style={[styles.backArrow, { color: getThemeColor() }]}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{getPortalTitle()}</Text>
           <View style={{ width: 40 }} />
@@ -108,7 +115,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.headerContainer}>
-            <View style={styles.heartBadge}>
+            <View style={[styles.heartBadge, { backgroundColor: getThemeColor(), shadowColor: getThemeColor() }]}>
               <Text style={styles.heartIcon}>❦</Text>
             </View>
             <Text style={styles.titleText}>ManaPelli</Text>
@@ -133,19 +140,24 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
             <Text style={styles.label}>
               {portalType === 'user' ? 'Issued Password' : 'Password'}
             </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="password"
-            />
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter your password"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoComplete="password"
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
-              style={styles.loginButton}
+              style={[styles.loginButton, { backgroundColor: getThemeColor(), shadowColor: getThemeColor() }]}
               onPress={handleLogin}
               disabled={loading}
             >
@@ -161,7 +173,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
                 style={styles.registerLink}
                 onPress={onShowRegister}
               >
-                <Text style={styles.registerLinkText}>New member? Submit a profile →</Text>
+                <Text style={[styles.registerLinkText, { color: getThemeColor() }]}>New member? Submit a profile →</Text>
               </TouchableOpacity>
             )}
 
@@ -171,7 +183,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
                   ? 'Your sign-in password is issued by your bureau after approval.'
                   : 'Bureau and Master credentials are created by platform operators.'}
               </Text>
-              <Text style={styles.contactText}>
+              <Text style={[styles.contactText, { color: getThemeColor() }]}>
                 Need help? Contact hello@manapelli.in
               </Text>
             </View>
@@ -342,5 +354,28 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#8B1E3F',
     textAlign: 'center',
+  },
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E6E0D5',
+    borderRadius: 12,
+    backgroundColor: '#FCFAF6',
+    paddingRight: 10,
+    marginBottom: 20,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 52,
+    paddingHorizontal: 16,
+    color: '#2C1B1F',
+    fontSize: 16,
+  },
+  eyeBtn: {
+    padding: 10,
+  },
+  eyeText: {
+    fontSize: 20,
   },
 });

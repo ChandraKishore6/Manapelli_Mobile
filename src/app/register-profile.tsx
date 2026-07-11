@@ -65,6 +65,7 @@ export default function RegisterProfileScreen({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [nativePlace, setNativePlace] = useState('');
   const [currentPlace, setCurrentPlace] = useState('');
   const [occupation, setOccupation] = useState('');
@@ -537,15 +538,20 @@ export default function RegisterProfileScreen({
               />
 
               <Text style={styles.label}>Requested Account Password *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Choose a password"
-                placeholderTextColor="#999"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Choose a password"
+                  placeholderTextColor="#999"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                  <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.btnRow}>
                 <TouchableOpacity style={styles.secondaryBtn} onPress={handlePrevStep}>
@@ -1092,5 +1098,28 @@ const styles = StyleSheet.create({
     color: '#7C674F',
     lineHeight: 20,
     textAlign: 'center',
+  },
+  passwordInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E6E0D5',
+    borderRadius: 12,
+    backgroundColor: '#FCFAF6',
+    paddingRight: 10,
+    marginBottom: 20,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 52,
+    paddingHorizontal: 16,
+    color: '#2C1B1F',
+    fontSize: 16,
+  },
+  eyeBtn: {
+    padding: 10,
+  },
+  eyeText: {
+    fontSize: 20,
   },
 });
