@@ -400,13 +400,18 @@ export default function WelcomeScreen({
                     <Text style={styles.bureauDetailLoc}>📍 {selectedBureau.location || 'South India'}</Text>
                   </View>
 
+                  <Text style={styles.detailLabel}>Active Profiles</Text>
+                  <Text style={styles.detailText}>
+                    👥 {selectedBureau.profile_count || 0} human-verified profiles registered for {selectedCommName}
+                  </Text>
+
                   <Text style={styles.detailLabel}>About Us</Text>
                   <Text style={styles.detailText}>{selectedBureau.about_us || 'No description provided.'}</Text>
 
-                  <Text style={styles.detailLabel}>Contact details</Text>
+                  <Text style={styles.detailLabel}>Contact Details</Text>
                   <Text style={styles.detailText}>✉️ {selectedBureau.contact_email}</Text>
                   {selectedBureau.contact_phone && (
-                    <Text style={styles.detailText}>📞 {selectedBureau.contact_phone}</Text>
+                    <Text style={[styles.detailText, { marginTop: 4 }]}>📞 {selectedBureau.contact_phone}</Text>
                   )}
 
                   <TouchableOpacity style={styles.modalApplyBtn} onPress={handleApplyToBureau}>
