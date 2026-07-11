@@ -16,6 +16,8 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 
@@ -125,7 +127,6 @@ export default function BureauDashboard() {
   const [bureauCommunities, setBureauCommunities] = useState<Community[]>([]);
   const [loadingComms, setLoadingComms] = useState(false);
   const [newMemName, setNewMemName] = useState('');
-  const [newMemDob, setNewMemDob] = useState('');
   const [newMemGender, setNewMemGender] = useState<'male' | 'female'>('male');
   const [newMemCommunityId, setNewMemCommunityId] = useState('');
   const [newMemCommunityName, setNewMemCommunityName] = useState('');
@@ -139,6 +140,11 @@ export default function BureauDashboard() {
   const [newMemNative, setNewMemNative] = useState('');
   const [newMemPref, setNewMemPref] = useState('');
   const [creatingMember, setCreatingMember] = useState(false);
+  // DOB date picker
+  const [newMemDobDate, setNewMemDobDate] = useState(new Date(2000, 0, 1));
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  // Photo upload
+  const [newMemPhotos, setNewMemPhotos] = useState<string[]>([]);
 
   // Bureau Edit Settings
   const [isEditingBureau, setIsEditingBureau] = useState(false);
@@ -263,43 +269,131 @@ export default function BureauDashboard() {
     loadProfileImages(profile.id);
   };
 
-  const handleCreateMember = async () => {
-    if (!newMemName || !newMemDob || !newMemEmail || !newMemPassword) {
-      Alert.alert('Error', 'Full Name, Date of Birth, Email, and Password are required');
+  // Format local date as YYYY-MM-DD without UTC shift
+  const formatLocalDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const handlePickMemberPhotos = async () => {
+    if (newMemPhotos.length >= 5) {
+      Alert.alert('Limit Reached', 'Maximum 5 photos allowed');
       return;
     }
-    const dobRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dobRegex.test(newMemDob)) {
-      Alert.alert('Invalid Date Format', 'Date of Birth must be YYYY-MM-DD');
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Please grant photo access to upload photos');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: 5 - newMemPhotos.length,
+    });
+    if (!result.canceled && result.assets) {
+      const uris = result.assets.map((a) => a.uri);
+      setNewMemPhotos((prev) => [...prev, ...uris].slice(0, 5));
+    }
+  };
+
+  const handleCreateMember = async () => {
+    if (!newMemName || !newMemEmail || !newMemPassword) {
+      Alert.alert('Error', 'Full Name, Email, and Password are required');
       return;
     }
 
     setCreatingMember(true);
     try {
-      const { error } = await supabase.from('profiles').insert({
-        bureau_id: bureauId,
-        community_id: newMemCommunityId || null,
-        full_name: newMemName,
-        dob: newMemDob,
-        gender: newMemGender,
-        email: newMemEmail,
-        phone: newMemPhone || null,
-        last_password: newMemPassword,
-        community: newMemCommunityName,
-        current_place: newMemCurrent || 'Not specified',
-        native_place: newMemNative || null,
-        occupation: newMemOcc || null,
-        salary: newMemSalary ? Number(newMemSalary) : null,
-        partner_preferences: newMemPref || null,
-        status: newMemStatus,
+      const profileId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
       });
+
+      // Upload photos first using ArrayBuffer method
+      const uploadedPaths: string[] = [];
+      for (const photoUri of newMemPhotos) {
+        try {
+          const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.onload = function () {
+              const reader = new FileReader();
+              reader.onloadend = function () {
+                try {
+                  const result = reader.result as string;
+                  const base64Data = result.split(',')[1];
+                  const binaryString = atob(base64Data);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let j = 0; j < binaryString.length; j++) {
+                    bytes[j] = binaryString.charCodeAt(j);
+                  }
+                  resolve(bytes.buffer);
+                } catch (err) { reject(err); }
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(xhr.response);
+            };
+            xhr.onerror = reject;
+            xhr.responseType = 'blob';
+            xhr.open('GET', photoUri, true);
+            xhr.send(null);
+          });
+
+          const fileExt = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
+          const filename = `${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const storagePath = `${profileId}/${filename}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('profile-images')
+            .upload(storagePath, arrayBuffer, { contentType: 'image/jpeg', cacheControl: '3600' });
+
+          if (uploadError) {
+            console.error('Photo upload failed:', uploadError.message);
+            Alert.alert('Upload Error', `Failed to upload photo: ${uploadError.message}`);
+          } else {
+            uploadedPaths.push(storagePath);
+          }
+        } catch (err: any) {
+          console.error('Photo read error:', err);
+        }
+      }
+
+      // Create profile + save image paths atomically via RPC
+      const dobString = formatLocalDate(newMemDobDate);
+      const { error } = await supabase.rpc('submit_profile_registration', {
+        p_id: profileId,
+        p_bureau_id: bureauId,
+        p_community_id: newMemCommunityId || null,
+        p_full_name: newMemName,
+        p_dob: dobString,
+        p_gender: newMemGender,
+        p_email: newMemEmail,
+        p_phone: newMemPhone || null,
+        p_last_password: newMemPassword,
+        p_community: newMemCommunityName || null,
+        p_current_place: newMemCurrent || 'Not specified',
+        p_native_place: newMemNative || null,
+        p_occupation: newMemOcc || null,
+        p_salary: newMemSalary ? Number(newMemSalary) : null,
+        p_partner_preferences: newMemPref || null,
+        p_image_paths: uploadedPaths.length > 0 ? uploadedPaths : null,
+      });
+
+      // After RPC (which defaults to pending), update status if approved
+      if (!error && newMemStatus === 'approved') {
+        await supabase.from('profiles').update({ status: 'approved' }).eq('id', profileId);
+      }
 
       if (error) {
         Alert.alert('Failed to Add Member', error.message);
       } else {
-        Alert.alert('Success', 'Member profile added successfully');
+        Alert.alert('Success', 'Member profile added successfully!');
+        // Reset form
         setNewMemName('');
-        setNewMemDob('');
+        setNewMemDobDate(new Date(2000, 0, 1));
         setNewMemEmail('');
         setNewMemPhone('');
         setNewMemPassword('');
@@ -308,15 +402,20 @@ export default function BureauDashboard() {
         setNewMemCurrent('');
         setNewMemNative('');
         setNewMemPref('');
-        setActiveTab('approved');
+        setNewMemPhotos([]);
+        setNewMemCommunityId('');
+        setNewMemCommunityName('');
+        setActiveTab(newMemStatus);
         await fetchBureauData();
       }
     } catch (err) {
       console.error(err);
+      Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setCreatingMember(false);
     }
   };
+
 
   const handleSaveProfile = async () => {
     if (!selectedProfile) return;
@@ -570,11 +669,60 @@ export default function BureauDashboard() {
           <View style={styles.editCard}>
             <Text style={styles.cardTitle}>Create New Member Profile</Text>
 
+            {/* Photos */}
+            <Text style={styles.label}>Profile Photos (up to 5)</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              {newMemPhotos.map((uri, idx) => (
+                <View key={idx} style={{ marginRight: 8, position: 'relative' }}>
+                  <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 8 }} contentFit="cover" />
+                  <TouchableOpacity
+                    onPress={() => setNewMemPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                    style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#B23B3B', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {newMemPhotos.length < 5 && (
+                <TouchableOpacity
+                  onPress={handlePickMemberPhotos}
+                  style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1.5, borderColor: '#8B1E3F', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ fontSize: 28, color: '#8B1E3F' }}>+</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+
             <Text style={styles.label}>Full Name *</Text>
             <TextInput style={styles.input} value={newMemName} onChangeText={setNewMemName} placeholder="Enter full name" placeholderTextColor="#999" />
 
-            <Text style={styles.label}>Date of Birth * (YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={newMemDob} onChangeText={setNewMemDob} placeholder="e.g. 1996-05-15" placeholderTextColor="#999" keyboardType="numeric" />
+            <Text style={styles.label}>Date of Birth *</Text>
+            <TouchableOpacity
+              style={[styles.input, { justifyContent: 'center' }]}
+              onPress={() => setShowDobPicker(true)}
+            >
+              <Text style={{ color: '#1a1a1a', fontSize: 15 }}>{formatLocalDate(newMemDobDate)}</Text>
+            </TouchableOpacity>
+            {showDobPicker && (
+              <DateTimePicker
+                value={newMemDobDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={new Date()}
+                onChange={(_, selectedDate) => {
+                  setShowDobPicker(Platform.OS === 'ios');
+                  if (selectedDate) setNewMemDobDate(selectedDate);
+                }}
+              />
+            )}
+            {Platform.OS === 'ios' && showDobPicker && (
+              <TouchableOpacity
+                onPress={() => setShowDobPicker(false)}
+                style={{ alignSelf: 'flex-end', marginBottom: 8, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#8B1E3F', borderRadius: 8 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Done</Text>
+              </TouchableOpacity>
+            )}
 
             <Text style={styles.label}>Gender *</Text>
             <View style={styles.genderContainer}>
