@@ -26,6 +26,7 @@ interface Bureau {
   about_us: string | null;
   status: 'pending' | 'approved' | 'rejected';
   admin_password: string | null;
+  logo_url: string | null;
 }
 
 interface Profile {
@@ -1278,6 +1279,21 @@ export default function MasterDashboard() {
                   </View>
                 ) : (
                   <View>
+                    {/* Bureau Logo */}
+                    {selectedBureau.logo_url && (() => {
+                      const logoUrl = selectedBureau.logo_url.startsWith('http')
+                        ? selectedBureau.logo_url
+                        : `https://npvmvqminzgbuxibonta.supabase.co/storage/v1/object/public/bureau-logos/${selectedBureau.logo_url}`;
+                      return (
+                        <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                          <Image
+                            source={{ uri: logoUrl }}
+                            style={{ width: 100, height: 100, borderRadius: 12 }}
+                            contentFit="cover"
+                          />
+                        </View>
+                      );
+                    })()}
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Bureau Name</Text>
                       <Text style={styles.detailValue}>{selectedBureau.name}</Text>

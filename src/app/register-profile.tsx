@@ -32,6 +32,7 @@ interface Bureau {
 
 interface RegisterProfileProps {
   onShowLogin: () => void;
+  onShowWelcome: () => void;
   // Support initial registration with details
   initialCommunityId?: string;
   initialBureauId?: string;
@@ -39,6 +40,7 @@ interface RegisterProfileProps {
 
 export default function RegisterProfileScreen({
   onShowLogin,
+  onShowWelcome,
   initialCommunityId = '',
   initialBureauId = '',
 }: RegisterProfileProps) {
@@ -152,6 +154,11 @@ export default function RegisterProfileScreen({
   };
 
   const handlePrevStep = () => {
+    // At the very first step, go back to home/welcome
+    if (step === 1) {
+      onShowWelcome();
+      return;
+    }
     // If we started with a preselected community (step 3), don't go back past step 3
     if (initialCommunityId && step === 3) {
       onShowLogin();

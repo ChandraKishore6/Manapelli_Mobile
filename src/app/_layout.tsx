@@ -47,6 +47,7 @@ function AppContent() {
           return (
             <RegisterProfileScreen
               onShowLogin={() => setView('login')}
+              onShowWelcome={() => setView('welcome')}
               initialCommunityId={preselectedCommunityId}
               initialBureauId={preselectedBureauId}
             />

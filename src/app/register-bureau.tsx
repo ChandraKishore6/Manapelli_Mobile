@@ -145,7 +145,11 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
             console.error('Failed to upload bureau logo:', uploadError.message);
             Alert.alert('Upload Error', `Failed to upload logo: ${uploadError.message}`);
           } else {
-            uploadedLogoPath = storagePath;
+            // Store the full public URL so it loads everywhere without conversion
+            const { data: publicUrlData } = supabase.storage
+              .from('bureau-logos')
+              .getPublicUrl(storagePath);
+            uploadedLogoPath = publicUrlData?.publicUrl || storagePath;
           }
         } catch (err: any) {
           console.error('Logo reading error:', err);
