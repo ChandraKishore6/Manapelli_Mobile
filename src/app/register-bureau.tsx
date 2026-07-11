@@ -102,8 +102,18 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
     try {
       let uploadedLogoPath = null;
       if (logoUri) {
-        const response = await fetch(logoUri);
-        const blob = await response.blob();
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = function () {
+            resolve(xhr.response);
+          };
+          xhr.onerror = function (e) {
+            reject(new TypeError("Network request failed"));
+          };
+          xhr.responseType = "blob";
+          xhr.open("GET", logoUri, true);
+          xhr.send(null);
+        });
         
         const fileExt = logoUri.split('.').pop()?.toLowerCase() || 'jpg';
         const filename = `${Math.random().toString(36).substring(7)}.${fileExt}`;

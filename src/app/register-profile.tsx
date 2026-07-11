@@ -217,8 +217,18 @@ export default function RegisterProfileScreen({
       const uploadedPaths: string[] = [];
       for (let i = 0; i < photos.length; i++) {
         const photoUri = photos[i];
-        const response = await fetch(photoUri);
-        const blob = await response.blob();
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.onload = function () {
+            resolve(xhr.response);
+          };
+          xhr.onerror = function (e) {
+            reject(new TypeError("Network request failed"));
+          };
+          xhr.responseType = "blob";
+          xhr.open("GET", photoUri, true);
+          xhr.send(null);
+        });
         
         const fileExt = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
         const filename = `${Math.random().toString(36).substring(7)}.${fileExt}`;
