@@ -28,55 +28,27 @@ export default function FavoritesScreen({ onViewProfile }: FavoritesScreenProps)
     if (!profile) return;
     setLoading(true);
     try {
-      // 1. Fetch favorite links joined with profiles
+      // 1. Call RPC helper function
       const { data, error } = await supabase
-        .from('favorites')
-        .select('profile_id, profiles (*)')
-        .eq('user_id', profile.user_id);
+        .rpc('list_favorite_profiles');
 
       if (error) {
         console.error('Error fetching favorites:', error.message);
         return;
       }
 
-      if (!data) {
+      if (!data || data.length === 0) {
         setFavorites([]);
         return;
       }
 
-      const rawProfiles = data
-        .map((item: any) => item.profiles)
-        .filter((p): p is any => p !== null && p.status === 'approved');
+      const rawProfiles = data as any[];
 
-      if (rawProfiles.length === 0) {
-        setFavorites([]);
-        return;
-      }
-
-      const favIds = rawProfiles.map((p) => p.id);
-
-      // 2. Fetch all images for these profiles
-      const { data: imagesData } = await supabase
-        .from('profile_images')
-        .select('profile_id, storage_path')
-        .in('profile_id', favIds)
-        .order('sort_order', { ascending: true });
-
-      const imagePathsMap = new Map<string, string[]>();
-      if (imagesData) {
-        imagesData.forEach((img: any) => {
-          const current = imagePathsMap.get(img.profile_id) || [];
-          current.push(img.storage_path);
-          imagePathsMap.set(img.profile_id, current);
-        });
-      }
-
-      // 3. Gather all paths to create signed URLs
+      // 2. Gather all paths to create signed URLs
       const allPaths: string[] = [];
       rawProfiles.forEach((p) => {
-        const paths = imagePathsMap.get(p.id) || [];
-        if (paths.length > 0) {
-          allPaths.push(...paths);
+        if (p.image_paths && p.image_paths.length > 0) {
+          allPaths.push(...p.image_paths);
         } else if (p.cover_image_path) {
           allPaths.push(p.cover_image_path);
         }
@@ -98,12 +70,12 @@ export default function FavoritesScreen({ onViewProfile }: FavoritesScreenProps)
         }
       }
 
-      // 4. Map everything to MatchProfile structure
+      // 3. Map everything to MatchProfile structure
       const formatted: MatchProfile[] = rawProfiles.map((p) => {
-        const paths = imagePathsMap.get(p.id) || [];
+        const paths = p.image_paths || [];
         const urls = paths
-          .map((path) => urlMap.get(path))
-          .filter((url): url is string => !!url);
+          .map((path: string) => urlMap.get(path))
+          .filter((url: any): url is string => !!url);
 
         if (urls.length === 0 && p.cover_image_path) {
           const coverUrl = urlMap.get(p.cover_image_path);
