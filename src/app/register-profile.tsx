@@ -217,34 +217,55 @@ export default function RegisterProfileScreen({
       const uploadedPaths: string[] = [];
       for (let i = 0; i < photos.length; i++) {
         const photoUri = photos[i];
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.onload = function () {
-            resolve(xhr.response);
-          };
-          xhr.onerror = function (e) {
-            reject(new TypeError("Network request failed"));
-          };
-          xhr.responseType = "blob";
-          xhr.open("GET", photoUri, true);
-          xhr.send(null);
-        });
         
-        const fileExt = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
-        const filename = `${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const storagePath = `${profileId}/${filename}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('profile-images')
-          .upload(storagePath, blob, {
-            contentType: 'image/jpeg',
-            cacheControl: '3600',
+        try {
+          const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.onload = function () {
+              const reader = new FileReader();
+              reader.onloadend = function () {
+                try {
+                  const result = reader.result as string;
+                  const base64Data = result.split(',')[1];
+                  const binaryString = atob(base64Data);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let j = 0; j < binaryString.length; j++) {
+                    bytes[j] = binaryString.charCodeAt(j);
+                  }
+                  resolve(bytes.buffer);
+                } catch (err) {
+                  reject(err);
+                }
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(xhr.response);
+            };
+            xhr.onerror = reject;
+            xhr.responseType = "blob";
+            xhr.open("GET", photoUri, true);
+            xhr.send(null);
           });
 
-        if (uploadError) {
-          console.error('Failed to upload photo:', uploadError.message);
-        } else {
-          uploadedPaths.push(storagePath);
+          const fileExt = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
+          const filename = `${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const storagePath = `${profileId}/${filename}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('profile-images')
+            .upload(storagePath, arrayBuffer, {
+              contentType: 'image/jpeg',
+              cacheControl: '3600',
+            });
+
+          if (uploadError) {
+            console.error('Failed to upload photo:', uploadError.message);
+            Alert.alert('Upload Error', `Failed to upload photo: ${uploadError.message}`);
+          } else {
+            uploadedPaths.push(storagePath);
+          }
+        } catch (err: any) {
+          console.error('Photo reading error:', err);
+          Alert.alert('Photo Error', `Failed to process image: ${err.message || err}`);
         }
       }
 

@@ -102,34 +102,54 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
     try {
       let uploadedLogoPath = null;
       if (logoUri) {
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.onload = function () {
-            resolve(xhr.response);
-          };
-          xhr.onerror = function (e) {
-            reject(new TypeError("Network request failed"));
-          };
-          xhr.responseType = "blob";
-          xhr.open("GET", logoUri, true);
-          xhr.send(null);
-        });
-        
-        const fileExt = logoUri.split('.').pop()?.toLowerCase() || 'jpg';
-        const filename = `${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const storagePath = `logos/${filename}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('bureau-logos')
-          .upload(storagePath, blob, {
-            contentType: 'image/jpeg',
-            cacheControl: '3600',
+        try {
+          const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.onload = function () {
+              const reader = new FileReader();
+              reader.onloadend = function () {
+                try {
+                  const result = reader.result as string;
+                  const base64Data = result.split(',')[1];
+                  const binaryString = atob(base64Data);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let j = 0; j < binaryString.length; j++) {
+                    bytes[j] = binaryString.charCodeAt(j);
+                  }
+                  resolve(bytes.buffer);
+                } catch (err) {
+                  reject(err);
+                }
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(xhr.response);
+            };
+            xhr.onerror = reject;
+            xhr.responseType = "blob";
+            xhr.open("GET", logoUri, true);
+            xhr.send(null);
           });
+          
+          const fileExt = logoUri.split('.').pop()?.toLowerCase() || 'jpg';
+          const filename = `${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const storagePath = `logos/${filename}`;
 
-        if (uploadError) {
-          console.error('Failed to upload bureau logo:', uploadError.message);
-        } else {
-          uploadedLogoPath = storagePath;
+          const { error: uploadError } = await supabase.storage
+            .from('bureau-logos')
+            .upload(storagePath, arrayBuffer, {
+              contentType: 'image/jpeg',
+              cacheControl: '3600',
+            });
+
+          if (uploadError) {
+            console.error('Failed to upload bureau logo:', uploadError.message);
+            Alert.alert('Upload Error', `Failed to upload logo: ${uploadError.message}`);
+          } else {
+            uploadedLogoPath = storagePath;
+          }
+        } catch (err: any) {
+          console.error('Logo reading error:', err);
+          Alert.alert('Logo Error', `Failed to process logo image: ${err.message || err}`);
         }
       }
 
