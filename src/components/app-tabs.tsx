@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import HomeScreen from '../app/index';
 import MyProfileScreen from '../app/explore';
@@ -16,6 +16,7 @@ import FavoritesScreen from '../app/favorites';
 export default function AppTabs() {
   const [activeTab, setActiveTab] = useState<'home' | 'favorites' | 'profile'>('home');
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   if (viewingProfileId) {
     return (
@@ -39,8 +40,8 @@ export default function AppTabs() {
         )}
       </View>
 
-      {/* Tab Bar */}
-      <SafeAreaView style={styles.tabBarSafeArea}>
+      {/* Tab Bar Container */}
+      <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <View style={styles.tabBar}>
           <TouchableOpacity
             style={styles.tabItem}
@@ -81,7 +82,7 @@ export default function AppTabs() {
             </Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -94,17 +95,17 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
   },
-  tabBarSafeArea: {
+  tabBarContainer: {
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#EFEAE2',
+    paddingTop: 8,
   },
   tabBar: {
-    height: 60,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingBottom: Platform.OS === 'ios' ? 0 : 4,
   },
   tabItem: {
     alignItems: 'center',
