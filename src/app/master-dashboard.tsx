@@ -57,13 +57,26 @@ interface Community {
   is_active: boolean;
 }
 
+interface SupportTicket {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
+}
+
 export default function MasterDashboard() {
   const { signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [bureaus, setBureaus] = useState<Bureau[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [communities, setCommunities] = useState<Community[]>([]);
-  const [activeTab, setActiveTab] = useState<'pending_bureaus' | 'all_bureaus' | 'profiles' | 'communities' | 'add_bureau' | 'add_member'>('pending_bureaus');
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [activeTab, setActiveTab] = useState<'pending_bureaus' | 'all_bureaus' | 'profiles' | 'communities' | 'add_bureau' | 'add_member' | 'support_tickets'>('pending_bureaus');
 
   // Bureau Edit States
   const [selectedBureau, setSelectedBureau] = useState<Bureau | null>(null);
@@ -206,6 +219,15 @@ export default function MasterDashboard() {
         .order('sort_order', { ascending: true });
       if (commsData) {
         setCommunities(commsData as Community[]);
+      }
+
+      // 4. Fetch Support Tickets
+      const { data: ticketsData } = await supabase
+        .from('support_tickets')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (ticketsData) {
+        setSupportTickets(ticketsData as SupportTicket[]);
       }
     } catch (err) {
       console.error(err);
@@ -842,6 +864,14 @@ export default function MasterDashboard() {
             Add Member
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'support_tickets' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('support_tickets')}
+        >
+          <Text style={[styles.tabButtonText, activeTab === 'support_tickets' && styles.tabButtonTextActive]}>
+            Support ({supportTickets.filter((t) => t.status === 'pending').length})
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {loading ? (
@@ -1181,6 +1211,50 @@ export default function MasterDashboard() {
               </TouchableOpacity>
             );
           }}
+        />
+      ) : activeTab === 'support_tickets' ? (
+        <FlatList
+          data={supportTickets}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No support tickets found.</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.listItem}
+              onPress={() => setSelectedTicket(item)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.nameText}>{item.subject}</Text>
+                  <Text style={styles.subText}>
+                    From: {item.name} ({item.email}) {item.phone ? `· 📞 ${item.phone}` : ''}
+                  </Text>
+                  <Text style={[styles.subText, { marginTop: 4 }]} numberOfLines={1}>
+                    {item.message}
+                  </Text>
+                  <Text style={[styles.subText, { fontSize: 10, marginTop: 4 }]}>
+                    Submitted: {new Date(item.created_at).toLocaleString()}
+                  </Text>
+                </View>
+                <View style={styles.rightInfo}>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      item.status === 'resolved' && styles.statusApproved,
+                    ]}
+                  >
+                    <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+                  </View>
+                  <Text style={styles.viewLink}>View →</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
         />
       ) : (
         <FlatList
@@ -1703,6 +1777,109 @@ export default function MasterDashboard() {
                 </View>
               </Modal>
 
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Support Ticket Detail Modal */}
+      {selectedTicket && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={!!selectedTicket}
+          onRequestClose={() => setSelectedTicket(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Support Ticket Details</Text>
+                <TouchableOpacity onPress={() => setSelectedTicket(null)}>
+                  <Text style={styles.closeBtn}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalScroll}>
+                <View style={styles.detailBox}>
+                  <Text style={styles.detailLabel}>Subject</Text>
+                  <Text style={styles.detailValueText}>{selectedTicket.subject}</Text>
+
+                  <Text style={styles.detailLabel}>From (Name)</Text>
+                  <Text style={styles.detailValueText}>{selectedTicket.name}</Text>
+
+                  <Text style={styles.detailLabel}>Email Address</Text>
+                  <Text style={styles.detailValueText}>{selectedTicket.email}</Text>
+
+                  {selectedTicket.phone && (
+                    <>
+                      <Text style={styles.detailLabel}>Phone Number</Text>
+                      <Text style={styles.detailValueText}>{selectedTicket.phone}</Text>
+                    </>
+                  )}
+
+                  <Text style={styles.detailLabel}>Date Submitted</Text>
+                  <Text style={styles.detailValueText}>
+                    {new Date(selectedTicket.created_at).toLocaleString()}
+                  </Text>
+
+                  <Text style={styles.detailLabel}>Message</Text>
+                  <View style={styles.messageBox}>
+                    <Text style={styles.messageText}>{selectedTicket.message}</Text>
+                  </View>
+
+                  <Text style={styles.detailLabel}>Ticket Status</Text>
+                  <View
+                    style={[
+                      styles.statusBadgeDetail,
+                      selectedTicket.status === 'resolved' ? styles.statusApproved : styles.statusPendingText,
+                    ]}
+                  >
+                    <Text style={styles.statusText}>{selectedTicket.status.toUpperCase()}</Text>
+                  </View>
+
+                  <View style={styles.modalActionRow}>
+                    {selectedTicket.status === 'pending' ? (
+                      <TouchableOpacity
+                        style={styles.approveBtn}
+                        onPress={async () => {
+                          const { error } = await supabase
+                            .from('support_tickets')
+                            .update({ status: 'resolved' })
+                            .eq('id', selectedTicket.id);
+                          if (error) {
+                            Alert.alert('Error', error.message);
+                          } else {
+                            Alert.alert('Success', 'Ticket marked as resolved.');
+                            setSelectedTicket(null);
+                            fetchMasterData();
+                          }
+                        }}
+                      >
+                        <Text style={styles.approveBtnText}>Mark as Resolved</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.approveBtn, { backgroundColor: '#808080' }]}
+                        onPress={async () => {
+                          const { error } = await supabase
+                            .from('support_tickets')
+                            .update({ status: 'pending' })
+                            .eq('id', selectedTicket.id);
+                          if (error) {
+                            Alert.alert('Error', error.message);
+                          } else {
+                            Alert.alert('Success', 'Ticket marked as pending (Re-opened).');
+                            setSelectedTicket(null);
+                            fetchMasterData();
+                          }
+                        }}
+                      >
+                        <Text style={styles.approveBtnText}>Mark as Pending</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -2359,5 +2536,43 @@ const styles = StyleSheet.create({
   },
   eyeText: {
     fontSize: 18,
+  },
+  detailBox: {
+    paddingBottom: 40,
+  },
+  detailValueText: {
+    fontSize: 15,
+    color: '#2C1B1F',
+    fontWeight: '600',
+  },
+  messageBox: {
+    backgroundColor: '#FAF5EE',
+    borderWidth: 1,
+    borderColor: '#EFEAE2',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 6,
+    marginBottom: 12,
+  },
+  messageText: {
+    fontSize: 14,
+    color: '#706064',
+    lineHeight: 20,
+  },
+  statusBadgeDetail: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  modalActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  statusPendingText: {
+    backgroundColor: '#FFF2E0',
   },
 });

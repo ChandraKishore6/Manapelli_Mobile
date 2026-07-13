@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { SupportModal } from '../components/support-modal';
 
 const STORAGE_URL = 'https://npvmvqminzgbuxibonta.supabase.co/storage/v1/object/public/profile-images/';
 
@@ -23,6 +24,7 @@ export default function MyProfileScreen() {
   const [bureauName, setBureauName] = useState('My Bureau');
   const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [supportVisible, setSupportVisible] = useState(false);
   const [signedCoverUrl, setSignedCoverUrl] = useState<string | null>(null);
 
   // Form edit states
@@ -339,6 +341,13 @@ export default function MyProfileScreen() {
           {/* Sign Out Button */}
           {!isEditing && (
             <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.supportBtn}
+                onPress={() => setSupportVisible(true)}
+              >
+                <Text style={styles.supportBtnText}>Contact Support Form</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
                 <Text style={styles.signOutBtnText}>Sign Out of App</Text>
               </TouchableOpacity>
@@ -347,6 +356,14 @@ export default function MyProfileScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <SupportModal
+        visible={supportVisible}
+        onClose={() => setSupportVisible(false)}
+        prefilledName={profile.full_name || ''}
+        prefilledEmail={profile.email || ''}
+        prefilledPhone={profile.phone || ''}
+      />
     </SafeAreaView>
   );
 }
@@ -564,6 +581,25 @@ const styles = StyleSheet.create({
   },
   signOutBtnText: {
     color: '#B23B3B',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  supportBtn: {
+    backgroundColor: '#8B1E3F',
+    borderRadius: 12,
+    height: 50,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#8B1E3F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  supportBtnText: {
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },

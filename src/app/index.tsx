@@ -17,6 +17,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { SupportModal } from '../components/support-modal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const cardWidth = SCREEN_WIDTH - 32;
@@ -230,6 +231,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [bureauName, setBureauName] = useState('My Bureau');
+  const [supportVisible, setSupportVisible] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out of ManaPelli?', [
@@ -465,11 +467,26 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
             )}
             
             <View style={styles.contactDetails}>
-              <Text style={styles.contactLabel}>For assistance, contact your bureau:</Text>
-              <Text style={styles.contactEmail}>hello@manapelli.in</Text>
+              <Text style={styles.contactLabel}>For assistance, contact support:</Text>
+              <Text style={styles.contactEmail}>support@manapelli.in</Text>
+              
+              <TouchableOpacity
+                style={styles.supportBtn}
+                onPress={() => setSupportVisible(true)}
+              >
+                <Text style={styles.supportBtnText}>Contact Support Form</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
+
+        <SupportModal
+          visible={supportVisible}
+          onClose={() => setSupportVisible(false)}
+          prefilledName={profile.full_name || ''}
+          prefilledEmail={profile.email || ''}
+          prefilledPhone={profile.phone || ''}
+        />
       </SafeAreaView>
     );
   }
@@ -852,5 +869,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#8B1E3F',
+  },
+  supportBtn: {
+    marginTop: 14,
+    backgroundColor: '#8B1E3F',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    width: '100%',
+  },
+  supportBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

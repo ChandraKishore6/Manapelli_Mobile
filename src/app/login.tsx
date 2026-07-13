@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { SupportModal } from '../components/support-modal';
 
 interface LoginScreenProps {
   portalType: 'user' | 'bureau_admin' | 'master_admin';
@@ -25,6 +26,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [supportVisible, setSupportVisible] = useState(false);
 
   const getThemeColor = () => {
     if (portalType === 'bureau_admin') return '#1B365D';
@@ -183,13 +185,21 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
                   ? 'Your sign-in password is issued by your bureau after approval.'
                   : 'Bureau and Master credentials are created by platform operators.'}
               </Text>
-              <Text style={[styles.contactText, { color: getThemeColor() }]}>
-                Need help? Contact hello@manapelli.in
-              </Text>
+              <TouchableOpacity onPress={() => setSupportVisible(true)}>
+                <Text style={[styles.contactText, { color: getThemeColor(), textDecorationLine: 'underline' }]}>
+                  Need help? Contact support@manapelli.in
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <SupportModal
+        visible={supportVisible}
+        onClose={() => setSupportVisible(false)}
+        prefilledEmail={email}
+      />
     </SafeAreaView>
   );
 }
