@@ -2,8 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
-import { useState } from 'react';
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { useEffect, useState } from 'react';
 import AppTabs from '@/components/app-tabs';
 import { AuthProvider, useAuth } from '../hooks/useAuth';
 import LoginScreen from './login';
@@ -23,8 +22,16 @@ function AppContent() {
   const [preselectedBureauId, setPreselectedBureauId] = useState('');
   const colorScheme = useColorScheme();
 
+  useEffect(() => {
+    if (!loading) {
+      SplashScreen.hideAsync().catch((err) => {
+        console.warn('Failed to hide splash screen:', err);
+      });
+    }
+  }, [loading]);
+
   if (loading) {
-    return <AnimatedSplashOverlay />;
+    return null;
   }
 
   // Define screen layout content based on authentication state and user role
