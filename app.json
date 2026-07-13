@@ -9,7 +9,7 @@
     "scheme": "manapelli",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.ckreddy.manapelli.app",
+      "bundleIdentifier": "com.manapelli.app",
       "buildNumber": "1",
       "supportsTablet": false,
       "icon": "./assets/images/icon.png",
@@ -19,8 +19,8 @@
       }
     },
     "android": {
-      "package": "com.ckreddy.manapelli.app",
-      "versionCode": 1,
+      "package": "com.manapelli.app",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#FAF7F2",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
