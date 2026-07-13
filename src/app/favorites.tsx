@@ -4,12 +4,12 @@ import {
   Alert,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { MatchCard, MatchProfile } from './index';
