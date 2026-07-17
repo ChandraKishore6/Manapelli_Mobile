@@ -593,6 +593,33 @@ export default function BureauDashboard() {
     }
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your admin account? This action is irreversible and you will be signed out immediately.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete Account', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              const { error } = await supabase.rpc('delete_user_account');
+              if (error) {
+                Alert.alert('Error', error.message);
+              } else {
+                Alert.alert('Account Deleted', 'Your admin account has been deleted.');
+                await signOut();
+              }
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'An error occurred during deletion.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const filteredProfiles = profiles.filter((p) => p.status === (activeTab === 'add_member' ? 'pending' : activeTab));
 
   if (loading && profiles.length === 0) {
@@ -661,6 +688,10 @@ export default function BureauDashboard() {
 
             <TouchableOpacity style={styles.saveBureauBtn} onPress={handleSaveBureauSettings} disabled={updatingBureau}>
               {updatingBureau ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBureauBtnText}>Save Bureau Profile</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount}>
+              <Text style={styles.deleteAccountBtnText}>Delete Admin Account</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -1378,6 +1409,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   saveBureauBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+  deleteAccountBtn: {
+    height: 50,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E3CFCF',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  deleteAccountBtnText: { color: '#B23B3B', fontWeight: '700', fontSize: 16 },
   genderContainer: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   genderBtn: {
     flex: 1,

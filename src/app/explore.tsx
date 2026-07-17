@@ -117,6 +117,33 @@ export default function MyProfileScreen() {
     ]);
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your matrimony account? This will erase your entire profile, preferences, photos, and login credentials. This action is irreversible.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete Account', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              const { error } = await supabase.rpc('delete_user_account');
+              if (error) {
+                Alert.alert('Error', error.message);
+              } else {
+                Alert.alert('Account Deleted', 'Your matrimony account has been permanently deleted.');
+                await signOut();
+              }
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'An error occurred during deletion.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const calculateAge = (dobString: string) => {
     if (!dobString) return '';
     const today = new Date();
@@ -350,6 +377,10 @@ export default function MyProfileScreen() {
 
               <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
                 <Text style={styles.signOutBtnText}>Sign Out of App</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.deleteAccountBtn} onPress={handleDeleteAccount}>
+                <Text style={styles.deleteAccountBtnText}>Delete Matrimony Account</Text>
               </TouchableOpacity>
               <Text style={styles.versionText}>ManaPelli Matrimony v1.0.0</Text>
             </View>
@@ -607,6 +638,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#998E90',
     marginTop: 16,
+  },
+  deleteAccountBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E3CFCF',
+    borderRadius: 12,
+    height: 50,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  deleteAccountBtnText: {
+    color: '#B23B3B',
+    fontSize: 15,
+    fontWeight: '600',
   },
   errorText: {
     fontSize: 16,
