@@ -318,6 +318,25 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
     setLoading(true);
     try {
       const oppositeGender = profile.gender === 'male' ? 'female' : 'male';
+
+      // 1. Fetch blocked user IDs
+      const { data: blockedList } = await supabase
+        .from('blocked_users')
+        .select('blocked_id')
+        .eq('blocker_id', profile.user_id);
+      
+      const blockedUserIds = (blockedList || []).map((b) => b.blocked_id);
+      let blockedProfileIds: string[] = [];
+      if (blockedUserIds.length > 0) {
+        const { data: blockedProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .in('user_id', blockedUserIds);
+        if (blockedProfiles) {
+          blockedProfileIds = blockedProfiles.map((p) => p.id);
+        }
+      }
+
       const { data, error } = await supabase
         .rpc('list_peer_profiles', { _bureau_id: profile.bureau_id });
 
@@ -325,7 +344,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
         console.error(error);
       } else if (data) {
         const oppositeMatches = (data as MatchProfile[]).filter(
-          (item) => item.gender === oppositeGender
+          (item) => item.gender === oppositeGender && !blockedProfileIds.includes(item.id)
         );
 
         // Gather all image paths to sign them in a single batch

@@ -62,6 +62,8 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
   const [signedCoverUrl, setSignedCoverUrl] = useState<string | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   const fetchProfileDetails = async () => {
     if (!id) return;
@@ -189,6 +191,98 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
       console.error(err);
     } finally {
       setFavoriteLoading(false);
+    }
+  };
+
+  const handleBlockUser = async () => {
+    Alert.alert(
+      'Block User',
+      'Are you sure you want to block this user? They will be permanently removed from your feed and matches, and you will not see their profile again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block User',
+          style: 'destructive',
+          onPress: async () => {
+            setBlocking(true);
+            try {
+              const { data: meUser } = await supabase.auth.getUser();
+              if (!meUser?.user) return;
+              
+              const { error } = await supabase
+                .rpc('block_profile', {
+                  _profile_id: id
+                });
+              
+              if (error) {
+                if (error.code === '23505') {
+                  Alert.alert('User Blocked', 'This user is already blocked.');
+                } else {
+                  Alert.alert('Error', error.message);
+                  return;
+                }
+              }
+              
+              Alert.alert('Blocked', 'This user has been blocked.');
+              handleBack();
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'An error occurred.');
+            } finally {
+              setBlocking(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleReportUser = () => {
+    Alert.alert(
+      'Report Profile',
+      'Choose a reason for reporting this profile:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Inappropriate Photos', onPress: () => submitReport('Inappropriate Photos') },
+        { text: 'Fake Profile / Spam', onPress: () => submitReport('Fake Profile / Spam') },
+        { text: 'Abusive Language / Behavior', onPress: () => submitReport('Abusive Language / Behavior') },
+        { text: 'Other', onPress: () => submitReport('Other / Unspecified') },
+      ]
+    );
+  };
+
+  const submitReport = async (reason: string) => {
+    setReporting(true);
+    try {
+      const { data: meUser } = await supabase.auth.getUser();
+      if (!meUser?.user) return;
+
+      const { error: reportError } = await supabase
+        .from('reported_profiles')
+        .insert({
+          reporter_id: meUser.user.id,
+          reported_profile_id: id,
+          reason: reason
+        });
+
+      if (reportError) {
+        Alert.alert('Error', reportError.message);
+        return;
+      }
+
+      await supabase
+        .rpc('block_profile', {
+          _profile_id: id
+        });
+
+      Alert.alert(
+        'Report Submitted',
+        'Thank you. This profile has been reported and blocked. Our moderation team will review this report and take action within 24 hours.'
+      );
+      handleBack();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'An error occurred.');
+    } finally {
+      setReporting(false);
     }
   };
 
@@ -469,6 +563,17 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
                 </Text>
               </View>
             </View>
+          </View>
+
+          {/* UGC Moderation Action Container */}
+          <View style={styles.moderationContainer}>
+            <TouchableOpacity style={styles.blockBtn} onPress={handleBlockUser} disabled={blocking}>
+              <Text style={styles.blockBtnText}>🚫 Block User</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.reportBtn} onPress={handleReportUser} disabled={reporting}>
+              <Text style={styles.reportBtnText}>⚠️ Report Profile</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Bottom Back Navigation */}
@@ -778,6 +883,43 @@ const styles = StyleSheet.create({
   },
   backLinkText: {
     color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  moderationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  blockBtn: {
+    flex: 1,
+    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EFEAE2',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blockBtnText: {
+    color: '#706064',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  reportBtn: {
+    flex: 1,
+    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#FFD2D2',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportBtnText: {
+    color: '#B23B3B',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

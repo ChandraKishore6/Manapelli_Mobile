@@ -51,6 +51,7 @@ export default function RegisterProfileScreen({
   const [loadingBureaus, setLoadingBureaus] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [eulaAccepted, setEulaAccepted] = useState(false);
 
   // Form Fields
   const [selectedCommunityId, setSelectedCommunityId] = useState(initialCommunityId);
@@ -216,6 +217,10 @@ export default function RegisterProfileScreen({
   };
 
   const handleSubmit = async () => {
+    if (!eulaAccepted) {
+      Alert.alert('Terms of Use', 'You must agree to the Terms of Use (EULA) before submitting.');
+      return;
+    }
     setSubmitting(true);
     try {
       const profileId = generateUUID();
@@ -719,6 +724,19 @@ export default function RegisterProfileScreen({
                 )}
               </View>
 
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setEulaAccepted(!eulaAccepted)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkbox, eulaAccepted && styles.checkboxChecked]}>
+                  {eulaAccepted && <Text style={styles.checkboxCheckmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>
+                  I agree to the <Text style={{ textDecorationLine: 'underline', color: '#8B1E3F' }}>Terms of Use (EULA)</Text> and understand that ManaPelli has a zero-tolerance policy for objectionable content or abusive behavior. Abusive accounts are terminated immediately.
+                </Text>
+              </TouchableOpacity>
+
               <View style={styles.btnRow}>
                 <TouchableOpacity style={styles.secondaryBtn} onPress={handlePrevStep}>
                   <Text style={styles.secondaryBtnText}>Back</Text>
@@ -1159,5 +1177,37 @@ const styles = StyleSheet.create({
   },
   eyeText: {
     fontSize: 20,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    marginTop: 10,
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#8B1E3F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: '#8B1E3F',
+  },
+  checkboxCheckmark: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    flex: 1,
+    fontSize: 13,
+    color: '#706064',
+    lineHeight: 18,
   },
 });
