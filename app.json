@@ -10,7 +10,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.manapelli.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "supportsTablet": false,
       "icon": "./assets/images/icon.png",
       "infoPlist": {
