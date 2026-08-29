@@ -16,7 +16,8 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "ManaPelli needs access to your photos to upload profile pictures.",
         "NSCameraUsageDescription": "ManaPelli needs camera access to take profile pictures."
-      }
+      },
+      "associatedDomains": ["applinks:manapelli.in"]
     },
     "android": {
       "package": "com.manapelli.app",
@@ -26,6 +27,25 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "manapelli.in",
+              "pathPrefix": "/p"
+            },
+            {
+              "scheme": "https",
+              "host": "manapelli.in",
+              "pathPrefix": "/b"
+            }
+          ],
+          "category": ["DEFAULT", "BROWSABLE"]
+        }
+      ],
       "permissions": [
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",

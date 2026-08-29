@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 
 interface Bureau {
@@ -51,6 +52,7 @@ export default function WelcomeScreen({
   onShowRegisterBureau,
   onShowRegisterProfileWithDetails,
 }: WelcomeScreenProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [statsBureaus, setStatsBureaus] = useState(0);
   const [statsCommunities, setStatsCommunities] = useState(0);
@@ -303,6 +305,15 @@ export default function WelcomeScreen({
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerLogo}>ManaPelli Matrimony</Text>
+          <View style={{ flexDirection: 'row', gap: 16, marginVertical: 8 }}>
+            <TouchableOpacity onPress={() => router.push('/privacy' as any)}>
+              <Text style={{ color: '#8B1E3F', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' }}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={{ color: '#998E90' }}>•</Text>
+            <TouchableOpacity onPress={() => router.push('/terms' as any)}>
+              <Text style={{ color: '#8B1E3F', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' }}>Terms of Service</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.footerText}>© 2026. All bureaus are independently operated.</Text>
         </View>
       </ScrollView>

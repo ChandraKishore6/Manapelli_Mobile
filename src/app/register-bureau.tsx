@@ -40,6 +40,7 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [eulaAccepted, setEulaAccepted] = useState(false);
+  const [servesAllCommunities, setServesAllCommunities] = useState(false);
 
   useEffect(() => {
     const fetchCommunities = async () => {
@@ -83,10 +84,22 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
     }
   };
 
+  const handleToggleServesAll = () => {
+    const nextVal = !servesAllCommunities;
+    setServesAllCommunities(nextVal);
+    if (nextVal) {
+      setSelectedCommunities(communities.map((c) => c.id));
+    }
+  };
+
   const handleToggleCommunity = (id: string) => {
-    setSelectedCommunities((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+    setSelectedCommunities((prev) => {
+      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
+      if (next.length !== communities.length) {
+        setServesAllCommunities(false);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async () => {
@@ -175,6 +188,13 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
           p_community_ids: selectedCommunities,
         }
       );
+
+      if (newBureauId && servesAllCommunities) {
+        await supabase
+          .from('bureaus')
+          .update({ serves_all_communities: true })
+          .eq('id', newBureauId);
+      }
 
       if (submitError) {
         Alert.alert('Submission Failed', submitError.message);
@@ -292,6 +312,30 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
             {/* Communities Served Selection */}
             <Text style={styles.label}>Communities Served *</Text>
             <Text style={styles.sectionDescription}>Select communities your bureau specializes in matching.</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.commChip,
+                { width: '100%', paddingVertical: 12, paddingHorizontal: 16, marginBottom: 12, borderWidth: 1.5, borderRadius: 12, alignItems: 'flex-start' },
+                servesAllCommunities && styles.commChipActive,
+              ]}
+              onPress={handleToggleServesAll}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.commChipText,
+                  { fontSize: 14, fontWeight: '700' },
+                  servesAllCommunities && styles.commChipTextActive,
+                ]}
+              >
+                {servesAllCommunities ? '✓ Serves All Communities (Universal)' : '🌐 Serves All Communities (Universal Bureau)'}
+              </Text>
+              <Text style={{ fontSize: 11, color: servesAllCommunities ? '#FFFFFF' : '#706064', marginTop: 2 }}>
+                Serves all existing communities and auto-syncs any new communities added in future.
+              </Text>
+            </TouchableOpacity>
+
             {loadingComms ? (
               <ActivityIndicator size="small" color="#8B1E3F" style={{ marginVertical: 10 }} />
             ) : (

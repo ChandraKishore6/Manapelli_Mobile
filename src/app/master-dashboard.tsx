@@ -28,6 +28,7 @@ interface Bureau {
   status: 'pending' | 'approved' | 'rejected';
   admin_password: string | null;
   logo_url: string | null;
+  serves_all_communities?: boolean | null;
 }
 
 interface Profile {

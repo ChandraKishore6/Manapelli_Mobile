@@ -151,6 +151,9 @@ export default function BureauDashboard() {
   const [bureauLocation, setBureauLocation] = useState('');
   const [bureauAbout, setBureauAbout] = useState('');
   const [bureauPhone, setBureauPhone] = useState('');
+  const [bureauLogoUrl, setBureauLogoUrl] = useState<string | null>(null);
+  const [servesAllCommunities, setServesAllCommunities] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [updatingBureau, setUpdatingBureau] = useState(false);
 
   const fetchBureauData = async () => {
@@ -167,6 +170,8 @@ export default function BureauDashboard() {
         setBureauLocation(bureauData.location || '');
         setBureauAbout(bureauData.about_us || '');
         setBureauPhone(bureauData.contact_phone || '');
+        setBureauLogoUrl(bureauData.logo_url || null);
+        setServesAllCommunities(!!bureauData.serves_all_communities);
       }
 
       const { data: profilesData, error: profilesError } = await supabase
@@ -634,9 +639,25 @@ export default function BureauDashboard() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.logoText}>ManaPelli</Text>
-          <Text style={styles.bureauNameSub}>{bureauName} Admin</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {bureauLogoUrl ? (
+            <Image source={{ uri: bureauLogoUrl }} style={{ width: 38, height: 38, borderRadius: 8 }} contentFit="cover" />
+          ) : (
+            <View style={{ width: 38, height: 38, borderRadius: 8, backgroundColor: '#8B1E3F', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{bureauName?.[0] || 'B'}</Text>
+            </View>
+          )}
+          <View>
+            <Text style={styles.logoText}>ManaPelli</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={styles.bureauNameSub}>{bureauName} Admin</Text>
+              {servesAllCommunities && (
+                <Text style={{ fontSize: 10, color: '#8B1E3F', fontWeight: '700', backgroundColor: '#FDF2F5', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                  Universal
+                </Text>
+              )}
+            </View>
+          </View>
         </View>
         <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
           <Text style={styles.signOutBtnText}>Sign Out</Text>
@@ -675,7 +696,67 @@ export default function BureauDashboard() {
       {isEditingBureau ? (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.editCard}>
-            <Text style={styles.cardTitle}>Edit Bureau Profile</Text>
+            <Text style={styles.label}>Bureau Logo</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              {bureauLogoUrl ? (
+                <Image source={{ uri: bureauLogoUrl }} style={{ width: 64, height: 64, borderRadius: 12 }} contentFit="cover" />
+              ) : (
+                <View style={{ width: 64, height: 64, borderRadius: 12, backgroundColor: '#FAF5EE', borderWidth: 1, borderColor: '#EFE3D3', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 24, color: '#8B1E3F' }}>🏛️</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={{ backgroundColor: '#8B1E3F', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8 }}
+                onPress={async () => {
+                  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (status !== 'granted') {
+                    Alert.alert('Permission Denied', 'Please allow photo gallery access.');
+                    return;
+                  }
+                  const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+                  if (!res.canceled && res.assets && res.assets.length > 0) {
+                    const uri = res.assets[0].uri;
+                    setUploadingLogo(true);
+                    try {
+                      const response = await fetch(uri);
+                      const blob = await response.blob();
+                      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+                      const filename = `${bureauId}_${Date.now()}.${fileExt}`;
+                      const path = `logos/${filename}`;
+                      const { error: upErr } = await supabase.storage.from('bureau-logos').upload(path, blob, { contentType: 'image/jpeg' });
+                      if (!upErr) {
+                        const { data: pUrl } = supabase.storage.from('bureau-logos').getPublicUrl(path);
+                        const url = pUrl?.publicUrl || path;
+                        setBureauLogoUrl(url);
+                        await supabase.from('bureaus').update({ logo_url: url }).eq('id', bureauId);
+                        Alert.alert('Logo Updated', 'Bureau logo saved successfully!');
+                      }
+                    } catch (e: any) {
+                      Alert.alert('Error', e.message || 'Failed to upload logo.');
+                    } finally {
+                      setUploadingLogo(false);
+                    }
+                  }
+                }}
+                disabled={uploadingLogo}
+              >
+                {uploadingLogo ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Change Logo</Text>}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FAF5EE', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#EFE3D3', marginBottom: 16 }}
+              onPress={() => setServesAllCommunities(!servesAllCommunities)}
+              activeOpacity={0.8}
+            >
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#2C1B1F' }}>🌐 Serves All Communities</Text>
+                <Text style={{ fontSize: 11, color: '#706064', marginTop: 2 }}>Automatically serves all existing and new communities.</Text>
+              </View>
+              <View style={{ width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: '#8B1E3F', backgroundColor: servesAllCommunities ? '#8B1E3F' : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                {servesAllCommunities && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>✓</Text>}
+              </View>
+            </TouchableOpacity>
 
             <Text style={styles.label}>Location</Text>
             <TextInput style={styles.input} value={bureauLocation} onChangeText={setBureauLocation} placeholder="e.g. Hyderabad, TS" placeholderTextColor="#999" />
@@ -686,7 +767,35 @@ export default function BureauDashboard() {
             <Text style={styles.label}>About Us</Text>
             <TextInput style={[styles.input, styles.textArea]} value={bureauAbout} onChangeText={setBureauAbout} placeholder="About our marriage bureau..." placeholderTextColor="#999" multiline numberOfLines={5} />
 
-            <TouchableOpacity style={styles.saveBureauBtn} onPress={handleSaveBureauSettings} disabled={updatingBureau}>
+            <TouchableOpacity
+              style={styles.saveBureauBtn}
+              onPress={async () => {
+                if (!bureauId) return;
+                setUpdatingBureau(true);
+                try {
+                  const { error } = await supabase
+                    .from('bureaus')
+                    .update({
+                      location: bureauLocation,
+                      about_us: bureauAbout,
+                      contact_phone: bureauPhone,
+                      serves_all_communities: servesAllCommunities,
+                      logo_url: bureauLogoUrl,
+                    })
+                    .eq('id', bureauId);
+                  if (error) {
+                    Alert.alert('Error', error.message);
+                  } else {
+                    Alert.alert('Success', 'Bureau settings updated successfully!');
+                  }
+                } catch (err: any) {
+                  Alert.alert('Error', err.message || 'An error occurred');
+                } finally {
+                  setUpdatingBureau(false);
+                }
+              }}
+              disabled={updatingBureau}
+            >
               {updatingBureau ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBureauBtnText}>Save Bureau Profile</Text>}
             </TouchableOpacity>
 

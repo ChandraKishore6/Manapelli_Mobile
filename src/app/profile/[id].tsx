@@ -3,8 +3,10 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Linking,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { ProfileGalleryModal } from '../../components/profile-gallery-modal';
 
 interface ProfileDetail {
   id: string;
@@ -64,6 +67,7 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [galleryVisible, setGalleryVisible] = useState(false);
 
   const fetchProfileDetails = async () => {
     if (!id) return;
@@ -286,6 +290,24 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
     }
   };
 
+  const handleShareProposal = async () => {
+    if (!profile) return;
+    const ageStr = profile.dob ? calculateAge(profile.dob) : null;
+    const proposalUrl = `https://manapelli.in/p/${id}`;
+    
+    const shareText = `💍 *ManaPelli Matrimonial Proposal*\n\n👤 *Candidate*: ${profile.full_name}${ageStr ? `, ${ageStr} Yrs` : ''}\n${profile.occupation ? `💼 *Profession*: ${profile.occupation}\n` : ''}${profile.current_place ? `📍 *Location*: ${profile.current_place}\n` : ''}${profile.community ? `🕌 *Community*: ${profile.community}\n` : ''}\n🔗 Click to view proposal & photos:\n${proposalUrl}`;
+
+    try {
+      await Share.share({
+        message: shareText,
+        url: proposalUrl,
+        title: `ManaPelli Proposal - ${profile.full_name}`,
+      });
+    } catch {
+      Linking.openURL(`https://wa.me/?text=${encodeURIComponent(shareText)}`);
+    }
+  };
+
   useEffect(() => {
     fetchProfileDetails();
     checkFavoriteStatus();
@@ -465,6 +487,19 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
                   ))}
                 </View>
               )}
+
+              {/* Protective Watermark Overlay */}
+              <View style={{ position: 'absolute', bottom: 12, right: 12, backgroundColor: 'rgba(0, 0, 0, 0.65)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' }}>ManaPelli ❤️ Official</Text>
+              </View>
+
+              {/* Expand Gallery Button */}
+              <TouchableOpacity
+                style={{ position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(0, 0, 0, 0.6)', width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' }}
+                onPress={() => setGalleryVisible(true)}
+              >
+                <Text style={{ color: '#fff', fontSize: 14 }}>🔍</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={[styles.carouselImage, styles.placeholderImage]}>
@@ -565,7 +600,11 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
             </View>
           </View>
 
-          {/* UGC Moderation Action Container */}
+          {/* Share Proposal & UGC Moderation Action Container */}
+          <TouchableOpacity style={{ backgroundColor: '#25D366', height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 16, marginBottom: 8 }} onPress={handleShareProposal}>
+            <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' }}>💬 Share Proposal on WhatsApp</Text>
+          </TouchableOpacity>
+
           <View style={styles.moderationContainer}>
             <TouchableOpacity style={styles.blockBtn} onPress={handleBlockUser} disabled={blocking}>
               <Text style={styles.blockBtnText}>🚫 Block User</Text>
@@ -581,6 +620,15 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
             <Text style={styles.bottomBackButtonText}>← Back to Matches</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Fullscreen Photo Lightbox Modal */}
+        <ProfileGalleryModal
+          visible={galleryVisible}
+          images={displayedImages}
+          initialIndex={activeImageIndex}
+          candidateName={profile.full_name}
+          onClose={() => setGalleryVisible(false)}
+        />
       </ScrollView>
     </SafeAreaView>
   );
