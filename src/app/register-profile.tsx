@@ -52,6 +52,7 @@ export default function RegisterProfileScreen({
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [eulaAccepted, setEulaAccepted] = useState(false);
+  const [allowCrossBureau, setAllowCrossBureau] = useState(true);
 
   // Form Fields
   const [selectedCommunityId, setSelectedCommunityId] = useState(initialCommunityId);
@@ -301,6 +302,7 @@ export default function RegisterProfileScreen({
           p_salary: salary ? Number(salary) : null,
           p_partner_preferences: partnerPreferences || null,
           p_image_paths: uploadedPaths,
+          p_allow_cross_bureau: allowCrossBureau,
         }
       );
 
@@ -461,6 +463,24 @@ export default function RegisterProfileScreen({
                   ))}
                 </View>
               )}
+
+              <TouchableOpacity
+                style={[styles.checkboxContainer, { marginTop: 16, marginBottom: 8 }]}
+                onPress={() => setAllowCrossBureau(!allowCrossBureau)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkbox, allowCrossBureau && styles.checkboxChecked]}>
+                  {allowCrossBureau && <Text style={styles.checkboxCheckmark}>✓</Text>}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>
+                    Share profile with partner bureaus
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                    Allow verified partner marriage bureaus in the {selectedCommunityName || 'selected'} community to view and present your profile to candidates. (Recommended)
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
               <View style={styles.btnRow}>
                 <TouchableOpacity style={styles.secondaryBtn} onPress={handlePrevStep}>
