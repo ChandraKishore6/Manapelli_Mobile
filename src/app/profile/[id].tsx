@@ -125,10 +125,12 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
           .maybeSingle();
 
         if (myProf && myProf.id !== id) {
-          await supabase.from('profile_views').insert({
-            viewer_profile_id: myProf.id,
-            viewed_profile_id: id,
-          }).catch(() => {});
+          try {
+            await supabase.from('profile_views').insert({
+              viewer_profile_id: myProf.id,
+              viewed_profile_id: id,
+            });
+          } catch {}
         }
       }
     } catch (err) {

@@ -536,6 +536,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 8,
   },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   badgePending: {
     backgroundColor: '#fef3c7',
   },
