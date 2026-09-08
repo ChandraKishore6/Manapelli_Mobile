@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { getCachedSignedUrl, getCachedSignedUrls } from '../../lib/photoCache';
 import { ProfileGalleryModal } from '../../components/profile-gallery-modal';
 
 interface ProfileDetail {
@@ -84,19 +85,14 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
         const pData = profileData as ProfileDetail;
         setProfile(pData);
         
-        // Fetch signed URL for cover image
+        // Fetch 24h cached signed URL for cover image
         if (pData.cover_image_path) {
-          const { data: signedCover } = await supabase
-            .storage
-            .from('profile-images')
-            .createSignedUrl(pData.cover_image_path, 3600);
-          if (signedCover) {
-            setSignedCoverUrl(signedCover.signedUrl);
-          }
+          const coverUrl = await getCachedSignedUrl(pData.cover_image_path);
+          setSignedCoverUrl(coverUrl);
         }
       }
 
-      // 2. Fetch all profile images
+      // 2. Fetch all profile images with 24h photo cache
       const { data: imagesData, error: imagesError } = await supabase
         .from('profile_images')
         .select('*')
@@ -108,29 +104,31 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
       } else if (imagesData) {
         const paths = (imagesData as ProfileImage[]).map((img) => img.storage_path);
         if (paths.length > 0) {
-          const { data: signedUrls } = await supabase
-            .storage
-            .from('profile-images')
-            .createSignedUrls(paths, 3600);
-
-          if (signedUrls) {
-            const urlMap = new Map<string, string>();
-            signedUrls.forEach((item) => {
-                if (item.signedUrl && item.path) {
-                  urlMap.set(item.path as string, item.signedUrl);
-                }
-            });
-
-            const imagesWithUrls = (imagesData as ProfileImage[]).map((img) => ({
-              ...img,
-              signed_url: urlMap.get(img.storage_path) || null,
-            }));
-            setImages(imagesWithUrls);
-          } else {
-            setImages(imagesData as ProfileImage[]);
-          }
+          const urlMap = await getCachedSignedUrls(paths);
+          const imagesWithUrls = (imagesData as ProfileImage[]).map((img) => ({
+            ...img,
+            signed_url: urlMap[img.storage_path] || null,
+          }));
+          setImages(imagesWithUrls);
         } else {
           setImages(imagesData as ProfileImage[]);
+        }
+      }
+
+      // 3. Log profile view into profile_views table automatically
+      const { data: meUser } = await supabase.auth.getUser();
+      if (meUser?.user) {
+        const { data: myProf } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', meUser.user.id)
+          .maybeSingle();
+
+        if (myProf && myProf.id !== id) {
+          await supabase.from('profile_views').insert({
+            viewer_profile_id: myProf.id,
+            viewed_profile_id: id,
+          }).catch(() => {});
         }
       }
     } catch (err) {

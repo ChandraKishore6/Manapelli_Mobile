@@ -232,6 +232,42 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [bureauName, setBureauName] = useState('My Bureau');
   const [supportVisible, setSupportVisible] = useState(false);
+  const [pendingInterestsCount, setPendingInterestsCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [viewsCount, setViewsCount] = useState(0);
+
+  const fetchSocialSummary = async () => {
+    if (!profile) return;
+    try {
+      // 1. Incoming pending interests count
+      const { count: pendingCount } = await supabase
+        .from('interests')
+        .select('id', { count: 'exact', head: true })
+        .eq('receiver_profile_id', profile.id)
+        .eq('status', 'pending');
+
+      setPendingInterestsCount(pendingCount || 0);
+
+      // 2. Unread messages count
+      const { count: unreadCount } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('receiver_user_id', profile.user_id)
+        .eq('is_read', false);
+
+      setUnreadMessagesCount(unreadCount || 0);
+
+      // 3. Profile views count
+      const { count: vCount } = await supabase
+        .from('profile_views')
+        .select('id', { count: 'exact', head: true })
+        .eq('viewed_profile_id', profile.id);
+
+      setViewsCount(vCount || 0);
+    } catch (err) {
+      console.error('Error fetching social summary:', err);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out of ManaPelli?', [
@@ -407,12 +443,13 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
       fetchBureauDetails(profile.bureau_id);
       fetchFavorites();
       fetchMatches();
+      fetchSocialSummary();
     }
   }, [profile]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchFavorites(), fetchMatches()]);
+    await Promise.all([fetchFavorites(), fetchMatches(), fetchSocialSummary()]);
     setRefreshing(false);
   };
 
@@ -522,6 +559,39 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
         </View>
         <TouchableOpacity onPress={handleSignOut} style={styles.signOutHeaderBtn}>
           <Text style={styles.signOutHeaderText}>Log Out</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Quick Navigation Action Row */}
+      <View style={styles.quickNavRow}>
+        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/interests' as any)}>
+          <Text style={styles.quickNavIcon}>📩</Text>
+          <Text style={styles.quickNavText}>Interests</Text>
+          {pendingInterestsCount > 0 && (
+            <View style={styles.quickNavBadge}>
+              <Text style={styles.quickNavBadgeText}>{pendingInterestsCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/chats' as any)}>
+          <Text style={styles.quickNavIcon}>💬</Text>
+          <Text style={styles.quickNavText}>Chats</Text>
+          {unreadMessagesCount > 0 && (
+            <View style={styles.quickNavBadge}>
+              <Text style={styles.quickNavBadgeText}>{unreadMessagesCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/views' as any)}>
+          <Text style={styles.quickNavIcon}>👁️</Text>
+          <Text style={styles.quickNavText}>Views</Text>
+          {viewsCount > 0 && (
+            <View style={styles.quickNavBadgeSecondary}>
+              <Text style={styles.quickNavBadgeText}>{viewsCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -902,5 +972,55 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
+  },
+  quickNavRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderColor: '#EFEAE2',
+  },
+  quickNavBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FAF7F2',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EFEAE2',
+    position: 'relative',
+  },
+  quickNavIcon: {
+    fontSize: 16,
+  },
+  quickNavText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2C1B1F',
+  },
+  quickNavBadge: {
+    backgroundColor: '#e11d48',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginLeft: 2,
+  },
+  quickNavBadgeSecondary: {
+    backgroundColor: '#64748b',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginLeft: 2,
+  },
+  quickNavBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });
