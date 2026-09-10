@@ -72,14 +72,15 @@ export default function ChatDetailScreen() {
       if (peerError) {
         console.error('Error fetching peer profile:', peerError.message);
       } else if (peerData) {
+        const pData = peerData as any;
         const p: PeerProfile = {
-          id: peerData.id,
-          user_id: peerData.user_id,
-          full_name: peerData.full_name || 'Candidate',
-          gender: peerData.gender || 'female',
-          occupation: peerData.occupation,
-          cover_image_path: peerData.cover_image_path,
-          bureau_name: peerData.bureau_name,
+          id: pData.id,
+          user_id: pData.user_id,
+          full_name: pData.full_name || 'Candidate',
+          gender: pData.gender || 'female',
+          occupation: pData.occupation,
+          cover_image_path: pData.cover_image_path,
+          bureau_name: pData.bureau_name,
         };
         setPeerProfile(p);
 
