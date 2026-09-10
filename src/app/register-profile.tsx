@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 
 interface Community {
@@ -44,6 +45,7 @@ export default function RegisterProfileScreen({
   initialCommunityId = '',
   initialBureauId = '',
 }: RegisterProfileProps) {
+  const router = useRouter();
   const [step, setStep] = useState(initialCommunityId ? 3 : 1);
   const [communities, setCommunities] = useState<Community[]>([]);
   const [loadingComms, setLoadingComms] = useState(true);
@@ -753,7 +755,21 @@ export default function RegisterProfileScreen({
                   {eulaAccepted && <Text style={styles.checkboxCheckmark}>✓</Text>}
                 </View>
                 <Text style={styles.checkboxLabel}>
-                  I agree to the <Text style={{ textDecorationLine: 'underline', color: '#8B1E3F' }}>Terms of Use (EULA)</Text> and understand that ManaPelli has a zero-tolerance policy for objectionable content or abusive behavior. Abusive accounts are terminated immediately.
+                  I agree to the{' '}
+                  <Text
+                    style={{ textDecorationLine: 'underline', color: '#8B1E3F', fontWeight: 'bold' }}
+                    onPress={() => router.push('/terms' as any)}
+                  >
+                    Terms of Use (EULA)
+                  </Text>{' '}
+                  &{' '}
+                  <Text
+                    style={{ textDecorationLine: 'underline', color: '#8B1E3F', fontWeight: 'bold' }}
+                    onPress={() => router.push('/privacy' as any)}
+                  >
+                    Privacy Policy
+                  </Text>
+                  , and understand that ManaPelli has a zero-tolerance policy for objectionable content or abusive behavior.
                 </Text>
               </TouchableOpacity>
 

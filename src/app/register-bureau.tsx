@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 
 interface Community {
@@ -26,6 +27,7 @@ interface RegisterBureauProps {
 }
 
 export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauProps) {
+  const router = useRouter();
   const [bureauName, setBureauName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -382,7 +384,21 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
                 {eulaAccepted && <Text style={styles.checkboxCheckmark}>✓</Text>}
               </View>
               <Text style={styles.checkboxLabel}>
-                I agree to the <Text style={{ textDecorationLine: 'underline', color: '#8B1E3F' }}>Terms of Use (EULA)</Text> and understand that ManaPelli has a zero-tolerance policy for objectionable content or abusive users, and abusive accounts are terminated immediately.
+                I agree to the{' '}
+                <Text
+                  style={{ textDecorationLine: 'underline', color: '#8B1E3F', fontWeight: 'bold' }}
+                  onPress={() => router.push('/terms' as any)}
+                >
+                  Terms of Use (EULA)
+                </Text>{' '}
+                &{' '}
+                <Text
+                  style={{ textDecorationLine: 'underline', color: '#8B1E3F', fontWeight: 'bold' }}
+                  onPress={() => router.push('/privacy' as any)}
+                >
+                  Privacy Policy
+                </Text>
+                , and understand that ManaPelli has a zero-tolerance policy for objectionable content or abusive users.
               </Text>
             </TouchableOpacity>
 
