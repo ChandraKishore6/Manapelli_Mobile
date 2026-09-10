@@ -97,10 +97,10 @@ export function MatchCard({
 
   return (
     <View style={styles.card}>
-      {/* Images Carousel */}
+      {/* Photo Carousel Container */}
       <View style={styles.cardImageContainer}>
         {displayedImages.length > 0 ? (
-          <View style={{ position: 'relative', width: '100%', height: 220 }}>
+          <View style={{ position: 'relative', width: '100%', height: 260 }}>
             <ScrollView
               ref={scrollViewRef}
               horizontal
@@ -118,9 +118,9 @@ export function MatchCard({
               {displayedImages.map((url, i) => (
                 <TouchableOpacity
                   key={i}
-                  activeOpacity={0.9}
+                  activeOpacity={0.92}
                   onPress={onPress}
-                  style={{ width: cardWidth, height: 220 }}
+                  style={{ width: cardWidth, height: 260 }}
                 >
                   <Image
                     source={{ uri: url }}
@@ -131,14 +131,14 @@ export function MatchCard({
               ))}
             </ScrollView>
 
-            {/* Prev / Next Arrow Overlays */}
+            {/* Prev / Next Photo Overlay Arrows */}
             {displayedImages.length > 1 && (
               <>
                 {activeImageIndex > 0 && (
                   <TouchableOpacity
                     style={[styles.arrowOverlay, styles.leftArrow]}
                     onPress={handlePrevPhoto}
-                    activeOpacity={0.7}
+                    activeOpacity={0.8}
                   >
                     <Text style={styles.arrowText}>‹</Text>
                   </TouchableOpacity>
@@ -147,7 +147,7 @@ export function MatchCard({
                   <TouchableOpacity
                     style={[styles.arrowOverlay, styles.rightArrow]}
                     onPress={handleNextPhoto}
-                    activeOpacity={0.7}
+                    activeOpacity={0.8}
                   >
                     <Text style={styles.arrowText}>›</Text>
                   </TouchableOpacity>
@@ -172,7 +172,7 @@ export function MatchCard({
           </View>
         ) : (
           <TouchableOpacity
-            activeOpacity={0.9}
+            activeOpacity={0.92}
             onPress={onPress}
             style={[styles.cardImage, styles.placeholderImage]}
           >
@@ -180,11 +180,11 @@ export function MatchCard({
           </TouchableOpacity>
         )}
 
+        {/* Top Badges: Community Pill (Left) & Favorite Heart Button (Right) */}
         <View style={styles.communityTag}>
           <Text style={styles.communityTagText}>{item.community || 'Community'}</Text>
         </View>
 
-        {/* Favorite Heart Button */}
         {onToggleFavorite && (
           <TouchableOpacity
             style={styles.heartButton}
@@ -192,46 +192,57 @@ export function MatchCard({
               e.stopPropagation();
               onToggleFavorite();
             }}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
             <Text style={styles.heartIconText}>{isFavorite ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
         )}
+
+        {/* Bureau Verification Badge Overlay on Image Bottom Left */}
+        <View style={styles.verifiedBadgeOverlay}>
+          <Text style={styles.verifiedBadgeText}>
+            🛡️ {item.bureau?.name || 'Bureau Verified'}
+            {!item.is_home_bureau && ' · Partner'}
+          </Text>
+        </View>
       </View>
 
-      <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.cardDetails}>
+      {/* Card Content & Details */}
+      <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.cardDetails}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={styles.cardName}>
             {item.full_name}, <Text style={styles.cardAge}>{calculateAge(item.dob)}</Text>
           </Text>
           {!item.is_home_bureau && (
-            <Text style={styles.crossBureauTag}>🌐 {item.bureau?.name || 'Partner Bureau'} · Partner</Text>
+            <View style={styles.partnerBadge}>
+              <Text style={styles.partnerBadgeText}>🌐 Cross-Bureau</Text>
+            </View>
           )}
         </View>
 
         <Text style={styles.cardSub}>
-          {item.occupation || 'Private Service'}
+          💼 {item.occupation || 'Private Service'}
         </Text>
 
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
             <Text style={styles.metaLabel}>Lives in</Text>
-            <Text style={styles.metaValue}>{item.current_place || 'Not specified'}</Text>
+            <Text style={styles.metaValue} numberOfLines={1}>📍 {item.current_place || 'Not specified'}</Text>
           </View>
           <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Native</Text>
-            <Text style={styles.metaValue}>{item.native_place || 'Not specified'}</Text>
+            <Text style={styles.metaLabel}>Native Place</Text>
+            <Text style={styles.metaValue} numberOfLines={1}>🏡 {item.native_place || 'Not specified'}</Text>
           </View>
         </View>
 
         <View style={styles.salaryContainer}>
           <Text style={styles.salaryLabel}>Annual Income</Text>
           <Text style={styles.salaryValue}>
-            {formatSalary(item.salary, item.salary_currency)}
+            💰 {formatSalary(item.salary, item.salary_currency)}
           </Text>
         </View>
 
-        {/* Card Action Buttons: Express Interest & Send Message */}
+        {/* Dual Primary Action Buttons: Express Interest & Send Message */}
         <View style={styles.cardActionsRow}>
           <TouchableOpacity
             style={[
@@ -246,6 +257,7 @@ export function MatchCard({
               e.stopPropagation();
               if (onExpressInterest) onExpressInterest();
             }}
+            activeOpacity={0.85}
           >
             <Text
               style={[
@@ -271,6 +283,7 @@ export function MatchCard({
               e.stopPropagation();
               if (onSendMessage) onSendMessage();
             }}
+            activeOpacity={0.85}
           >
             <Text style={styles.cardActionChatText}>💬 Send Message</Text>
           </TouchableOpacity>
@@ -613,20 +626,21 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={styles.logoText}>ManaPelli</Text>
+          <Text style={{ fontSize: 16 }}>❤️</Text>
           <View style={styles.bureauBadge}>
-            <Text style={styles.bureauBadgeText}>{bureauName}</Text>
+            <Text style={styles.bureauBadgeText} numberOfLines={1}>{bureauName}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={handleSignOut} style={styles.signOutHeaderBtn}>
+        <TouchableOpacity onPress={handleSignOut} style={styles.signOutHeaderBtn} activeOpacity={0.8}>
           <Text style={styles.signOutHeaderText}>Log Out</Text>
         </TouchableOpacity>
       </View>
 
       {/* Quick Navigation Action Row */}
       <View style={styles.quickNavRow}>
-        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/interests' as any)}>
+        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/interests' as any)} activeOpacity={0.8}>
           <Text style={styles.quickNavIcon}>📩</Text>
           <Text style={styles.quickNavText}>Interests</Text>
           {pendingInterestsCount > 0 && (
@@ -636,7 +650,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/chats' as any)}>
+        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/chats' as any)} activeOpacity={0.8}>
           <Text style={styles.quickNavIcon}>💬</Text>
           <Text style={styles.quickNavText}>Chats</Text>
           {unreadMessagesCount > 0 && (
@@ -646,7 +660,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/views' as any)}>
+        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/views' as any)} activeOpacity={0.8}>
           <Text style={styles.quickNavIcon}>👁️</Text>
           <Text style={styles.quickNavText}>Views</Text>
           {viewsCount > 0 && (
@@ -657,25 +671,29 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
         </TouchableOpacity>
       </View>
 
-      {/* Bureau Filter Toggle Bar */}
+      {/* Horizontal Filter Pill Chips Bar */}
       <View style={styles.filterToggleRow}>
-        <TouchableOpacity
-          style={[styles.filterToggleBtn, bureauFilter === 'all' && styles.filterToggleBtnActive]}
-          onPress={() => setBureauFilter('all')}
-        >
-          <Text style={[styles.filterToggleText, bureauFilter === 'all' && styles.filterToggleTextActive]}>
-            🌐 All Community ({matches.length})
-          </Text>
-        </TouchableOpacity>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          <TouchableOpacity
+            style={[styles.filterToggleBtn, bureauFilter === 'all' && styles.filterToggleBtnActive]}
+            onPress={() => setBureauFilter('all')}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.filterToggleText, bureauFilter === 'all' && styles.filterToggleTextActive]}>
+              🌐 All Community ({matches.length})
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.filterToggleBtn, bureauFilter === 'home' && styles.filterToggleBtnActive]}
-          onPress={() => setBureauFilter('home')}
-        >
-          <Text style={[styles.filterToggleText, bureauFilter === 'home' && styles.filterToggleTextActive]}>
-            🏛️ {bureauName ? (bureauName.length > 14 ? bureauName.slice(0, 14) + '...' : bureauName) : 'My Bureau'} ({matches.filter((m) => m.is_home_bureau).length})
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterToggleBtn, bureauFilter === 'home' && styles.filterToggleBtnActive]}
+            onPress={() => setBureauFilter('home')}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.filterToggleText, bureauFilter === 'home' && styles.filterToggleTextActive]}>
+              🏛️ {bureauName ? (bureauName.length > 14 ? bureauName.slice(0, 14) + '...' : bureauName) : 'My Bureau'} ({matches.filter((m) => m.is_home_bureau).length})
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       {/* Match List */}
@@ -722,8 +740,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF7F2',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#EFEAE2',
     backgroundColor: '#FFFFFF',
@@ -733,35 +751,37 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#2C1B1F',
+    color: '#8B1E3F',
+    letterSpacing: -0.5,
   },
   bureauBadge: {
-    backgroundColor: '#FAF0E6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: '#FFF0F3',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F0E6D8',
+    borderColor: '#F8D7DA',
+    maxWidth: 130,
   },
   bureauBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: '#8B1E3F',
   },
   signOutHeaderBtn: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E3CFCF',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#F5C6C6',
+    backgroundColor: '#FFF5F5',
   },
   signOutHeaderText: {
     color: '#B23B3B',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
   listContent: {
     padding: 16,
@@ -769,19 +789,19 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowColor: '#8B1E3F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
     borderWidth: 1,
     borderColor: '#EFEAE2',
   },
   cardImageContainer: {
-    height: 220,
+    height: 260,
     position: 'relative',
     backgroundColor: '#EFEAE2',
   },
@@ -800,25 +820,48 @@ const styles = StyleSheet.create({
   },
   communityTag: {
     position: 'absolute',
-    bottom: 12,
-    left: 12,
-    backgroundColor: '#8B1E3F',
+    top: 14,
+    left: 14,
+    backgroundColor: 'rgba(139, 30, 63, 0.92)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    zIndex: 10,
   },
   communityTagText: {
     color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  verifiedBadgeOverlay: {
+    position: 'absolute',
+    bottom: 12,
+    left: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 234, 226, 0.8)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  verifiedBadgeText: {
+    color: '#137333',
     fontSize: 11,
     fontWeight: '700',
-    textTransform: 'uppercase',
   },
   cardDetails: {
-    padding: 20,
+    padding: 18,
   },
   cardName: {
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '700',
     color: '#2C1B1F',
   },
@@ -826,66 +869,77 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
     color: '#706064',
   },
+  partnerBadge: {
+    backgroundColor: '#FFF0F3',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F8D7DA',
+  },
+  partnerBadgeText: {
+    color: '#8B1E3F',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   cardSub: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '600',
     color: '#706064',
     marginTop: 4,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   metaRow: {
     flexDirection: 'row',
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: '#F5ECE2',
-    paddingVertical: 12,
-    marginBottom: 16,
+    paddingVertical: 10,
+    marginBottom: 14,
+    gap: 12,
   },
   metaItem: {
     flex: 1,
   },
   metaLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#998E90',
     textTransform: 'uppercase',
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   metaValue: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#2C1B1F',
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 2,
   },
   salaryContainer: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   salaryLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#998E90',
     textTransform: 'uppercase',
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   salaryValue: {
-    fontSize: 15,
-    color: '#2C1B1F',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  viewProfileBtn: {
     fontSize: 14,
-    color: '#8B1E3F',
+    color: '#2C1B1F',
     fontWeight: '700',
-    textAlign: 'right',
+    marginTop: 2,
   },
   arrowOverlay: {
     position: 'absolute',
-    top: '40%',
+    top: '42%',
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    zIndex: 12,
   },
   leftArrow: {
     left: 12,
@@ -906,6 +960,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 8,
   },
   paginationDot: {
     width: 6,
@@ -915,27 +970,27 @@ const styles = StyleSheet.create({
   },
   activeDot: {
     backgroundColor: '#8B1E3F',
-    width: 14,
+    width: 16,
   },
   inactiveDot: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
   },
   heartButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    top: 14,
+    right: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   heartIconText: {
     fontSize: 18,
@@ -1077,52 +1132,54 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF7F2',
     paddingVertical: 10,
     paddingHorizontal: 10,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#EFEAE2',
-    position: 'relative',
+    shadowColor: '#8B1E3F',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   quickNavIcon: {
     fontSize: 16,
   },
   quickNavText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#2C1B1F',
   },
   quickNavBadge: {
-    backgroundColor: '#e11d48',
+    backgroundColor: '#E11D48',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 1,
     marginLeft: 2,
   },
   quickNavBadgeSecondary: {
-    backgroundColor: '#64748b',
+    backgroundColor: '#64748B',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 1,
     marginLeft: 2,
   },
   quickNavBadgeText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   filterToggleRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
+    paddingVertical: 10,
     backgroundColor: '#FAF7F2',
     borderBottomWidth: 1,
     borderColor: '#EFEAE2',
   },
   filterToggleBtn: {
-    flex: 1,
     paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#EFEAE2',
@@ -1135,77 +1192,73 @@ const styles = StyleSheet.create({
   },
   filterToggleText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#706064',
   },
   filterToggleTextActive: {
     color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  crossBureauTag: {
-    fontSize: 10,
-    color: '#8B1E3F',
-    backgroundColor: '#FFF0F3',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   cardActionsRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 10,
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderColor: '#F5ECE2',
   },
   cardActionBtn: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 11,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#E11D48',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
   },
   cardActionInterest: {
-    backgroundColor: '#e11d48',
+    backgroundColor: '#E11D48',
   },
   cardActionInterestText: {
-    color: '#ffffff',
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '800',
     fontSize: 13,
   },
   cardActionPending: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: '#f59e0b',
+    borderColor: '#F59E0B',
   },
   cardActionPendingText: {
-    color: '#b45309',
-    fontWeight: '700',
+    color: '#B45309',
+    fontWeight: '800',
     fontSize: 13,
   },
   cardActionAccepted: {
-    backgroundColor: '#d1fae5',
+    backgroundColor: '#D1FAE5',
     borderWidth: 1,
-    borderColor: '#10b981',
+    borderColor: '#10B981',
   },
   cardActionAcceptedText: {
     color: '#047857',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 13,
   },
   cardActionChat: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e11d48',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E11D48',
   },
   cardActionChatText: {
-    color: '#e11d48',
-    fontWeight: '700',
+    color: '#E11D48',
+    fontWeight: '800',
     fontSize: 13,
   },
   cardActionBtnText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });
