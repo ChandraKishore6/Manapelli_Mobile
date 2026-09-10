@@ -1284,8 +1284,8 @@ const styles = StyleSheet.create({
   tabButtonActive: { backgroundColor: '#8B1E3F' },
   tabButtonText: { fontSize: 13, fontWeight: '600', color: '#706064' },
   tabButtonTextActive: { color: '#FFFFFF' },
-  scrollContent: { padding: 20, flexGrow: 1 },
-  listContent: { padding: 16, gap: 12 },
+  scrollContent: { padding: 20, paddingBottom: 60, flexGrow: 1 },
+  listContent: { padding: 16, paddingBottom: 60, gap: 12 },
   emptyContainer: { alignItems: 'center', paddingVertical: 60 },
   emptyText: { fontSize: 14, color: '#998E90' },
   profileItem: {
