@@ -1316,7 +1316,7 @@ export default function MasterDashboard() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.modalScroll}>
+              <ScrollView style={styles.modalScroll} contentContainerStyle={{ paddingBottom: 30 }}>
                 {isEditingBureau ? (
                   <View style={styles.editForm}>
                     <Text style={styles.label}>Bureau Name *</Text>
@@ -1413,24 +1413,26 @@ export default function MasterDashboard() {
 
               {/* Action Buttons */}
               {isEditingBureau ? (
-                <View style={styles.actionRow}>
-                  <TouchableOpacity
-                    style={styles.cancelEditBtn}
-                    onPress={() => setIsEditingBureau(false)}
-                  >
-                    <Text style={styles.cancelEditBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.saveProfileBtn}
-                    onPress={handleSaveBureau}
-                    disabled={savingBureau}
-                  >
-                    {savingBureau ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveProfileBtnText}>Save Bureau</Text>
-                    )}
-                  </TouchableOpacity>
+                <View style={styles.actionColumn}>
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      style={styles.cancelEditBtn}
+                      onPress={() => setIsEditingBureau(false)}
+                    >
+                      <Text style={styles.cancelEditBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.saveProfileBtn}
+                      onPress={handleSaveBureau}
+                      disabled={savingBureau}
+                    >
+                      {savingBureau ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.saveProfileBtnText}>Save Bureau</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ) : (
                 <View style={styles.actionColumn}>
@@ -1469,43 +1471,42 @@ export default function MasterDashboard() {
                   </View>
                 </View>
               )}
-
-              {/* Approve Bureau Modal inside selectedBureau modal */}
-              <Modal animationType="fade" transparent={true} visible={isApproveVisible} onRequestClose={() => setIsApproveVisible(false)}>
-                <View style={styles.alertOverlay}>
-                  <View style={styles.alertCard}>
-                    <Text style={styles.alertTitle}>Approve Bureau Application</Text>
-                    <Text style={styles.alertDesc}>Enter an access password for their administrator dashboard.</Text>
-                    <View style={styles.passwordInputContainer}>
-                      <TextInput
-                        style={styles.passwordInput}
-                        placeholder="Enter admin password"
-                        placeholderTextColor="#999"
-                        secureTextEntry={!showApproveBurPassword}
-                        value={bureauAdminPassword}
-                        onChangeText={setBureauAdminPassword}
-                        autoCapitalize="none"
-                      />
-                      <TouchableOpacity onPress={() => setShowApproveBurPassword(!showApproveBurPassword)} style={styles.eyeBtn}>
-                        <Text style={styles.eyeText}>{showApproveBurPassword ? '🙈' : '👁️'}</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.alertButtons}>
-                      <TouchableOpacity style={styles.alertCancel} onPress={() => { setIsApproveVisible(false); setShowApproveBurPassword(false); }}>
-                        <Text style={styles.alertCancelText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.alertConfirm} onPress={handleApproveBureau}>
-                        <Text style={styles.alertConfirmText}>Approve Bureau ✓</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </Modal>
-
             </View>
           </View>
         </Modal>
       )}
+
+      {/* Approve Bureau Modal */}
+      <Modal animationType="fade" transparent={true} visible={isApproveVisible} onRequestClose={() => setIsApproveVisible(false)}>
+        <View style={styles.alertOverlay}>
+          <View style={styles.alertCard}>
+            <Text style={styles.alertTitle}>Approve Bureau Application</Text>
+            <Text style={styles.alertDesc}>Enter an access password for their administrator dashboard.</Text>
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter admin password"
+                placeholderTextColor="#999"
+                secureTextEntry={!showApproveBurPassword}
+                value={bureauAdminPassword}
+                onChangeText={setBureauAdminPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowApproveBurPassword(!showApproveBurPassword)} style={styles.eyeBtn}>
+                <Text style={styles.eyeText}>{showApproveBurPassword ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.alertButtons}>
+              <TouchableOpacity style={styles.alertCancel} onPress={() => { setIsApproveVisible(false); setShowApproveBurPassword(false); }}>
+                <Text style={styles.alertCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.alertConfirm} onPress={handleApproveBureau}>
+                <Text style={styles.alertConfirmText}>Approve Bureau ✓</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Profile Detail / Edit Modal (Global Member Management) */}
       {selectedProfile && (
@@ -1712,16 +1713,18 @@ export default function MasterDashboard() {
 
               {/* Action Buttons */}
               {isEditingProfile ? (
-                <View style={styles.actionRow}>
-                  <TouchableOpacity style={styles.cancelEditBtn} onPress={() => setIsEditingProfile(false)}>
-                    <Text style={styles.cancelEditBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.saveProfileBtn} onPress={handleSaveProfile} disabled={savingProfile}>
-                    {savingProfile ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveProfileBtnText}>Save Profile</Text>}
-                  </TouchableOpacity>
+                <View style={styles.actionColumn}>
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity style={styles.cancelEditBtn} onPress={() => setIsEditingProfile(false)}>
+                      <Text style={styles.cancelEditBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.saveProfileBtn} onPress={handleSaveProfile} disabled={savingProfile}>
+                      {savingProfile ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveProfileBtnText}>Save Profile</Text>}
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ) : (
-                <View>
+                <View style={styles.actionColumn}>
                   {selectedProfile.status === 'pending' && (
                     <View style={[styles.actionRow, { marginBottom: 10 }]}>
                       <TouchableOpacity
@@ -1745,43 +1748,42 @@ export default function MasterDashboard() {
                   </View>
                 </View>
               )}
-
-              {/* Approve Profile Modal inside selectedProfile modal */}
-              <Modal animationType="fade" transparent={true} visible={isApproveProfVisible} onRequestClose={() => setIsApproveProfVisible(false)}>
-                <View style={styles.alertOverlay}>
-                  <View style={styles.alertCard}>
-                    <Text style={styles.alertTitle}>Approve Member Profile</Text>
-                    <Text style={styles.alertDesc}>Enter or verify the access password to issue to this member.</Text>
-                    <View style={styles.passwordInputContainer}>
-                      <TextInput
-                        style={styles.passwordInput}
-                        placeholder="Enter member password"
-                        placeholderTextColor="#999"
-                        secureTextEntry={!showApproveProfPassword}
-                        value={memberPassword}
-                        onChangeText={setMemberPassword}
-                        autoCapitalize="none"
-                      />
-                      <TouchableOpacity onPress={() => setShowApproveProfPassword(!showApproveProfPassword)} style={styles.eyeBtn}>
-                        <Text style={styles.eyeText}>{showApproveProfPassword ? '🙈' : '👁️'}</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.alertButtons}>
-                      <TouchableOpacity style={styles.alertCancel} onPress={() => { setIsApproveProfVisible(false); setMemberPassword(''); setShowApproveProfPassword(false); }}>
-                        <Text style={styles.alertCancelText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.alertConfirm} onPress={handleApproveProfile}>
-                        <Text style={styles.alertConfirmText}>Approve Member ✓</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </Modal>
-
             </View>
           </View>
         </Modal>
       )}
+
+      {/* Approve Profile Modal */}
+      <Modal animationType="fade" transparent={true} visible={isApproveProfVisible} onRequestClose={() => setIsApproveProfVisible(false)}>
+        <View style={styles.alertOverlay}>
+          <View style={styles.alertCard}>
+            <Text style={styles.alertTitle}>Approve Member Profile</Text>
+            <Text style={styles.alertDesc}>Enter or verify the access password to issue to this member.</Text>
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter member password"
+                placeholderTextColor="#999"
+                secureTextEntry={!showApproveProfPassword}
+                value={memberPassword}
+                onChangeText={setMemberPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowApproveProfPassword(!showApproveProfPassword)} style={styles.eyeBtn}>
+                <Text style={styles.eyeText}>{showApproveProfPassword ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.alertButtons}>
+              <TouchableOpacity style={styles.alertCancel} onPress={() => { setIsApproveProfVisible(false); setMemberPassword(''); setShowApproveProfPassword(false); }}>
+                <Text style={styles.alertCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.alertConfirm} onPress={handleApproveProfile}>
+                <Text style={styles.alertConfirmText}>Approve Member ✓</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Support Ticket Detail Modal */}
       {selectedTicket && (
@@ -2082,7 +2084,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionColumn: {
-    flexDirection: 'column',
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: '#EFEAE2',
+    backgroundColor: '#FFFFFF',
   },
   rejectBtn: {
     flex: 1,

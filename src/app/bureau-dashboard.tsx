@@ -987,7 +987,7 @@ export default function BureauDashboard() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.modalScroll}>
+              <ScrollView style={styles.modalScroll} contentContainerStyle={{ paddingBottom: 30 }}>
                 {isEditingProfile ? (
                   <View style={styles.editForm}>
                     <Text style={styles.label}>Full Name *</Text>
@@ -1130,13 +1130,15 @@ export default function BureauDashboard() {
 
               {/* Action Buttons */}
               {isEditingProfile ? (
-                <View style={styles.actionRow}>
-                  <TouchableOpacity style={styles.cancelEditBtn} onPress={() => setIsEditingProfile(false)}>
-                    <Text style={styles.cancelEditBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.saveProfileBtn} onPress={handleSaveProfile} disabled={savingProfile}>
-                    {savingProfile ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveProfileBtnText}>Save Profile</Text>}
-                  </TouchableOpacity>
+                <View style={styles.actionColumn}>
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity style={styles.cancelEditBtn} onPress={() => setIsEditingProfile(false)}>
+                      <Text style={styles.cancelEditBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.saveProfileBtn} onPress={handleSaveProfile} disabled={savingProfile}>
+                      {savingProfile ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveProfileBtnText}>Save Profile</Text>}
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ) : (
                 <View style={styles.actionColumn}>
@@ -1166,70 +1168,70 @@ export default function BureauDashboard() {
                   </View>
                 </View>
               )}
-
-              {/* Approve Password Prompt inside Selected Profile Modal */}
-              <Modal animationType="fade" transparent={true} visible={isApproveVisible} onRequestClose={() => setIsApproveVisible(false)}>
-                <View style={styles.alertOverlay}>
-                  <View style={styles.alertCard}>
-                    <Text style={styles.alertTitle}>Approve Member Profile</Text>
-                    <Text style={styles.alertDesc}>Enter or verify the sign-in password for this member. Communicate it to them directly.</Text>
-                    
-                    <View style={styles.passwordInputContainer}>
-                      <TextInput
-                        style={styles.passwordInput}
-                        placeholder="Enter sign-in password"
-                        placeholderTextColor="#999"
-                        secureTextEntry={!showMemberPassword}
-                        value={memberPassword}
-                        onChangeText={setMemberPassword}
-                        autoCapitalize="none"
-                      />
-                      <TouchableOpacity onPress={() => setShowMemberPassword(!showMemberPassword)} style={styles.eyeBtn}>
-                        <Text style={styles.eyeText}>{showMemberPassword ? '🙈' : '👁️'}</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.alertBtnRow}>
-                      <TouchableOpacity style={styles.alertCancelBtn} onPress={() => { setIsApproveVisible(false); setMemberPassword(''); setShowMemberPassword(false); }}>
-                        <Text style={styles.alertCancelBtnText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.alertConfirmBtn} onPress={handleApprove}>
-                        <Text style={styles.alertConfirmBtnText}>Approve ✓</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </Modal>
-
-              {/* Reject Reason Prompt inside Selected Profile Modal */}
-              <Modal animationType="fade" transparent={true} visible={isRejectVisible} onRequestClose={() => setIsRejectVisible(false)}>
-                <View style={styles.alertOverlay}>
-                  <View style={styles.alertCard}>
-                    <Text style={styles.alertTitle}>Reject This Profile?</Text>
-                    <Text style={styles.alertDesc}>Optionally provide a rejection reason:</Text>
-                    <TextInput
-                      style={[styles.alertInput, { height: 80, textAlignVertical: 'top' }]}
-                      placeholder="Reason (optional)"
-                      placeholderTextColor="#999"
-                      value={rejectionReason}
-                      onChangeText={setRejectionReason}
-                      multiline
-                    />
-                    <View style={styles.alertBtnRow}>
-                      <TouchableOpacity style={styles.alertCancelBtn} onPress={() => { setIsRejectVisible(false); setRejectionReason(''); }}>
-                        <Text style={styles.alertCancelBtnText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.alertConfirmBtn, { backgroundColor: '#B23B3B' }]} onPress={handleReject}>
-                        <Text style={styles.alertConfirmBtnText}>Reject</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </Modal>
             </View>
           </View>
         </Modal>
       )}
+
+      {/* Approve Password Prompt Modal */}
+      <Modal animationType="fade" transparent={true} visible={isApproveVisible} onRequestClose={() => setIsApproveVisible(false)}>
+        <View style={styles.alertOverlay}>
+          <View style={styles.alertCard}>
+            <Text style={styles.alertTitle}>Approve Member Profile</Text>
+            <Text style={styles.alertDesc}>Enter or verify the sign-in password for this member. Communicate it to them directly.</Text>
+            
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter sign-in password"
+                placeholderTextColor="#999"
+                secureTextEntry={!showMemberPassword}
+                value={memberPassword}
+                onChangeText={setMemberPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowMemberPassword(!showMemberPassword)} style={styles.eyeBtn}>
+                <Text style={styles.eyeText}>{showMemberPassword ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.alertBtnRow}>
+              <TouchableOpacity style={styles.alertCancelBtn} onPress={() => { setIsApproveVisible(false); setMemberPassword(''); setShowMemberPassword(false); }}>
+                <Text style={styles.alertCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.alertConfirmBtn} onPress={handleApprove}>
+                <Text style={styles.alertConfirmBtnText}>Approve ✓</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Reject Reason Prompt Modal */}
+      <Modal animationType="fade" transparent={true} visible={isRejectVisible} onRequestClose={() => setIsRejectVisible(false)}>
+        <View style={styles.alertOverlay}>
+          <View style={styles.alertCard}>
+            <Text style={styles.alertTitle}>Reject This Profile?</Text>
+            <Text style={styles.alertDesc}>Optionally provide a rejection reason:</Text>
+            <TextInput
+              style={[styles.alertInput, { height: 80, textAlignVertical: 'top' }]}
+              placeholder="Reason (optional)"
+              placeholderTextColor="#999"
+              value={rejectionReason}
+              onChangeText={setRejectionReason}
+              multiline
+            />
+            <View style={styles.alertBtnRow}>
+              <TouchableOpacity style={styles.alertCancelBtn} onPress={() => { setIsRejectVisible(false); setRejectionReason(''); }}>
+                <Text style={styles.alertCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.alertConfirmBtn, { backgroundColor: '#B23B3B' }]} onPress={handleReject}>
+                <Text style={styles.alertConfirmBtnText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1411,7 +1413,14 @@ const styles = StyleSheet.create({
   rejectionTitle: { fontSize: 13, fontWeight: '700', color: '#B23B3B', marginBottom: 6 },
   rejectionText: { fontSize: 14, color: '#B23B3B' },
   // Actions
-  actionColumn: { paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#EFEAE2' },
+  actionColumn: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: '#EFEAE2',
+    backgroundColor: '#FFFFFF',
+  },
   actionRow: { flexDirection: 'row', gap: 12 },
   approveBtn: {
     flex: 1,
