@@ -97,6 +97,7 @@ export default function FavoritesScreen({ onViewProfile }: FavoritesScreenProps)
           image_paths: paths,
           signed_images: urls,
           signed_cover_url: p.cover_image_path ? urlMap.get(p.cover_image_path) || null : null,
+          bureau_id: p.bureau_id || '',
           bureau: {
             name: 'Partner Bureau',
           },

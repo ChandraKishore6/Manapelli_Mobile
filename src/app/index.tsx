@@ -501,16 +501,17 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
         if (oppositeGender && p.gender !== oppositeGender) return false;
 
         // Community matching: match by community_id or community name
-        if (profile.community_id && p.community_id && p.community_id !== profile.community_id) return false;
+        const profCommunityId = (profile as any).community_id;
+        if (profCommunityId && p.community_id && p.community_id !== profCommunityId) return false;
         if (profile.community && p.community && p.community.toLowerCase() !== profile.community.toLowerCase()) return false;
 
         // Cross-bureau serving check
         if (p.bureau_id !== profile.bureau_id) {
           if (p.allow_cross_bureau === false) return false;
           const servesAll = p.bureaus?.serves_all_communities;
-          if (!servesAll && profile.community_id) {
+          if (!servesAll && profCommunityId) {
             const bureauCommunities = bCommsMap.get(p.bureau_id);
-            if (!bureauCommunities || !bureauCommunities.has(profile.community_id)) {
+            if (!bureauCommunities || !bureauCommunities.has(profCommunityId)) {
               return false;
             }
           }

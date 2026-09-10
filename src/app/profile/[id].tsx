@@ -165,7 +165,8 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
     try {
       const { data: meUser } = await supabase.auth.getUser();
       if (!meUser?.user) return;
-      const { data: myProf } = await supabase.from('profiles').select('id').eq('user_id', meUser.user.id).single();
+      const { data: myProf } = await supabase.from('profiles').select('id').eq('user_id', meUser.user.id).maybeSingle();
+      if (!myProf?.id) return;
 
       if (interestStatus === 'pending' && !isInterestSender && interestId) {
         // Accept interest
