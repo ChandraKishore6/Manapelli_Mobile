@@ -293,9 +293,21 @@ export function MatchCard({
   );
 }
 
-export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
+interface HomeScreenProps {
+  onViewProfile?: (profileId: string) => void;
+  onOpenInterests?: () => void;
+  onOpenChats?: () => void;
+  onOpenViews?: () => void;
+  onOpenChat?: (peerProfileId: string) => void;
+}
+
+export default function HomeScreen({ onViewProfile, onOpenInterests, onOpenChats, onOpenViews, onOpenChat }: HomeScreenProps) {
   const { profile, signOut, loading: authLoading } = useAuth();
   const router = useRouter();
+  const handleOpenInterests = onOpenInterests || (() => router.push('/interests' as any));
+  const handleOpenChats = onOpenChats || (() => router.push('/chats' as any));
+  const handleOpenViews = onOpenViews || (() => router.push('/views' as any));
+  const handleOpenChat = onOpenChat || ((id: string) => router.push(`/chat/${id}` as any));
   const [matches, setMatches] = useState<MatchProfile[]>([]);
   const [favoritesList, setFavoritesList] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -640,7 +652,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
 
       {/* Quick Navigation Action Row */}
       <View style={styles.quickNavRow}>
-        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/interests' as any)} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.quickNavBtn} onPress={handleOpenInterests} activeOpacity={0.8}>
           <Text style={styles.quickNavIcon}>📩</Text>
           <Text style={styles.quickNavText}>Interests</Text>
           {pendingInterestsCount > 0 && (
@@ -650,7 +662,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/chats' as any)} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.quickNavBtn} onPress={handleOpenChats} activeOpacity={0.8}>
           <Text style={styles.quickNavIcon}>💬</Text>
           <Text style={styles.quickNavText}>Chats</Text>
           {unreadMessagesCount > 0 && (
@@ -660,7 +672,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickNavBtn} onPress={() => router.push('/views' as any)} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.quickNavBtn} onPress={handleOpenViews} activeOpacity={0.8}>
           <Text style={styles.quickNavIcon}>👁️</Text>
           <Text style={styles.quickNavText}>Views</Text>
           {viewsCount > 0 && (
@@ -719,7 +731,7 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
             isFavorite={favoritesList.includes(item.id)}
             onToggleFavorite={() => toggleFavorite(item.id)}
             onExpressInterest={() => handleExpressInterest(item.id)}
-            onSendMessage={() => router.push(`/chat/${item.id}` as any)}
+            onSendMessage={() => handleOpenChat(item.id)}
             interestStatus={interestsMap[item.id] || null}
           />
         )}

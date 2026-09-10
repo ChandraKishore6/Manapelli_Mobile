@@ -48,8 +48,15 @@ function timeAgo(dateString: string | null): string {
   return 'Just now';
 }
 
-export default function ChatsListScreen() {
+interface ChatsListScreenProps {
+  onBack?: () => void;
+  onOpenChat?: (peerProfileId: string) => void;
+}
+
+export default function ChatsListScreen({ onBack: propOnBack, onOpenChat: propOnOpenChat }: ChatsListScreenProps = {}) {
   const router = useRouter();
+  const handleBack = propOnBack || (() => router.back());
+  const handleOpenChat = (peerId: string) => propOnOpenChat ? propOnOpenChat(peerId) : router.push(`/chat/${peerId}` as any);
   const { profile, user } = useAuth();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [photosMap, setPhotosMap] = useState<Record<string, string>>({});
@@ -197,7 +204,7 @@ export default function ChatsListScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <Text style={styles.backBtnText}>‹ Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Messages & Chats</Text>
@@ -241,7 +248,7 @@ export default function ChatsListScreen() {
             return (
               <TouchableOpacity
                 style={styles.chatCard}
-                onPress={() => router.push(`/chat/${peer.id}` as any)}
+                onPress={() => handleOpenChat(peer.id)}
                 activeOpacity={0.7}
               >
                 <View style={styles.avatarWrapper}>

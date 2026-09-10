@@ -12,77 +12,155 @@ import HomeScreen from '../app/index';
 import MyProfileScreen from '../app/explore';
 import ProfileDetailScreen from '../app/profile/[id]';
 import FavoritesScreen from '../app/favorites';
+import InterestsScreen from '../app/interests';
+import ChatsListScreen from '../app/chats';
+import ChatDetailScreen from '../app/chat/[id]';
+import ProfileViewsScreen from '../app/views';
+
+export type NavRoute = 
+  | { screen: 'home' }
+  | { screen: 'favorites' }
+  | { screen: 'profile' }
+  | { screen: 'interests' }
+  | { screen: 'chats' }
+  | { screen: 'chat_detail'; peerProfileId: string }
+  | { screen: 'views' }
+  | { screen: 'profile_detail'; profileId: string };
 
 export default function AppTabs() {
-  const [activeTab, setActiveTab] = useState<'home' | 'favorites' | 'profile'>('home');
-  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
+  const [navStack, setNavStack] = useState<NavRoute[]>([{ screen: 'home' }]);
   const insets = useSafeAreaInsets();
 
-  if (viewingProfileId) {
-    return (
-      <ProfileDetailScreen
-        id={viewingProfileId}
-        onBack={() => setViewingProfileId(null)}
-      />
-    );
-  }
+  const currentRoute = navStack[navStack.length - 1];
+  const isRootTab = navStack.length === 1;
+
+  const pushScreen = (route: NavRoute) => {
+    setNavStack((prev) => [...prev, route]);
+  };
+
+  const popScreen = () => {
+    setNavStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
+  };
+
+  const switchTab = (tab: 'home' | 'favorites' | 'profile') => {
+    setNavStack([{ screen: tab }]);
+  };
+
+  const activeTabName = isRootTab && (currentRoute.screen === 'favorites' || currentRoute.screen === 'profile')
+    ? currentRoute.screen
+    : 'home';
+
+  const renderActiveScreen = () => {
+    switch (currentRoute.screen) {
+      case 'home':
+        return (
+          <HomeScreen
+            onViewProfile={(id) => pushScreen({ screen: 'profile_detail', profileId: id })}
+            onOpenInterests={() => pushScreen({ screen: 'interests' })}
+            onOpenChats={() => pushScreen({ screen: 'chats' })}
+            onOpenViews={() => pushScreen({ screen: 'views' })}
+            onOpenChat={(id) => pushScreen({ screen: 'chat_detail', peerProfileId: id })}
+          />
+        );
+      case 'favorites':
+        return (
+          <FavoritesScreen
+            onViewProfile={(id) => pushScreen({ screen: 'profile_detail', profileId: id })}
+          />
+        );
+      case 'profile':
+        return <MyProfileScreen />;
+      case 'interests':
+        return (
+          <InterestsScreen
+            onBack={popScreen}
+            onViewProfile={(id) => pushScreen({ screen: 'profile_detail', profileId: id })}
+            onOpenChat={(id) => pushScreen({ screen: 'chat_detail', peerProfileId: id })}
+          />
+        );
+      case 'chats':
+        return (
+          <ChatsListScreen
+            onBack={popScreen}
+            onOpenChat={(id) => pushScreen({ screen: 'chat_detail', peerProfileId: id })}
+          />
+        );
+      case 'chat_detail':
+        return (
+          <ChatDetailScreen
+            peerProfileId={currentRoute.peerProfileId}
+            onBack={popScreen}
+            onViewProfile={(id) => pushScreen({ screen: 'profile_detail', profileId: id })}
+          />
+        );
+      case 'views':
+        return (
+          <ProfileViewsScreen
+            onBack={popScreen}
+            onViewProfile={(id) => pushScreen({ screen: 'profile_detail', profileId: id })}
+            onOpenChat={(id) => pushScreen({ screen: 'chat_detail', peerProfileId: id })}
+          />
+        );
+      case 'profile_detail':
+        return (
+          <ProfileDetailScreen
+            id={currentRoute.profileId}
+            onBack={popScreen}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <View style={styles.container}>
       {/* Active Screen Container */}
       <View style={styles.screenContainer}>
-        {activeTab === 'home' ? (
-          <HomeScreen onViewProfile={(id) => setViewingProfileId(id)} />
-        ) : activeTab === 'favorites' ? (
-          <FavoritesScreen onViewProfile={(id) => setViewingProfileId(id)} />
-        ) : (
-          <MyProfileScreen />
-        )}
+        {renderActiveScreen()}
       </View>
 
-      {/* Tab Bar Container */}
-      <View style={[styles.tabBarContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 8 }]}>
-        <View style={styles.tabBar}>
-          <TouchableOpacity
-            style={styles.tabItem}
-            onPress={() => setActiveTab('home')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.tabIcon}>
-              {activeTab === 'home' ? '🏠' : '🏠'}
-            </Text>
-            <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActiveText]}>
-              Matches
-            </Text>
-          </TouchableOpacity>
+      {/* Tab Bar Container - Only rendered when on root tab screens */}
+      {isRootTab && (
+        <View style={[styles.tabBarContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 8 }]}>
+          <View style={styles.tabBar}>
+            <TouchableOpacity
+              style={styles.tabItem}
+              onPress={() => switchTab('home')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tabIcon}>🏠</Text>
+              <Text style={[styles.tabLabel, activeTabName === 'home' && styles.tabActiveText]}>
+                Matches
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.tabItem}
-            onPress={() => setActiveTab('favorites')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.tabIcon}>
-              {activeTab === 'favorites' ? '💖' : '🤍'}
-            </Text>
-            <Text style={[styles.tabLabel, activeTab === 'favorites' && styles.tabActiveText]}>
-              Favorites
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tabItem}
+              onPress={() => switchTab('favorites')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tabIcon}>
+                {activeTabName === 'favorites' ? '💖' : '🤍'}
+              </Text>
+              <Text style={[styles.tabLabel, activeTabName === 'favorites' && styles.tabActiveText]}>
+                Favorites
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.tabItem}
-            onPress={() => setActiveTab('profile')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.tabIcon}>
-              {activeTab === 'profile' ? '👤' : '👤'}
-            </Text>
-            <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabActiveText]}>
-              My Profile
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tabItem}
+              onPress={() => switchTab('profile')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tabIcon}>👤</Text>
+              <Text style={[styles.tabLabel, activeTabName === 'profile' && styles.tabActiveText]}>
+                My Profile
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 }

@@ -41,10 +41,18 @@ interface PeerProfile {
   bureau_name?: string | null;
 }
 
-export default function ChatDetailScreen() {
+interface ChatDetailScreenProps {
+  peerProfileId?: string;
+  onBack?: () => void;
+  onViewProfile?: (profileId: string) => void;
+}
+
+export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: propOnBack, onViewProfile: propOnViewProfile }: ChatDetailScreenProps = {}) {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const peerProfileId = params.id as string;
+  const peerProfileId = propPeerId || (params.id as string);
+  const handleBack = propOnBack || (() => router.back());
+  const handleViewProfile = (id: string) => propOnViewProfile ? propOnViewProfile(id) : router.push(`/profile/${id}` as any);
   const { profile, user } = useAuth();
 
   const flatListRef = useRef<FlatList>(null);
@@ -303,13 +311,13 @@ export default function ChatDetailScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <Text style={styles.backBtnText}>‹ Back</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.headerProfileRow}
-          onPress={() => router.push(`/profile/${peerProfileId}` as any)}
+          onPress={() => handleViewProfile(peerProfileId)}
           activeOpacity={0.8}
         >
           {signedPhotoUrl ? (

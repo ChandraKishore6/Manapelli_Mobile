@@ -970,6 +970,33 @@ export default function BureauDashboard() {
                 </View>
                 <StatusBadge status={item.status} />
               </View>
+
+              {item.status === 'pending' && (
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F5F0EA' }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, height: 38, backgroundColor: '#2E7D32', borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setSelectedProfile(item);
+                      setMemberPassword(item.last_password || '');
+                      setIsApproveVisible(true);
+                    }}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700' }}>✓ Approve</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{ flex: 1, height: 38, backgroundColor: '#FDECEA', borderWidth: 1, borderColor: '#F5C6C6', borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setSelectedProfile(item);
+                      setIsRejectVisible(true);
+                    }}
+                  >
+                    <Text style={{ color: '#B23B3B', fontSize: 13, fontWeight: '700' }}>✕ Reject</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </TouchableOpacity>
           )}
         />

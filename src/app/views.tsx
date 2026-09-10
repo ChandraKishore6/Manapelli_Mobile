@@ -57,8 +57,17 @@ function timeAgo(dateString: string): string {
   return 'Just now';
 }
 
-export default function ProfileViewsScreen() {
+interface ProfileViewsScreenProps {
+  onBack?: () => void;
+  onOpenChat?: (peerProfileId: string) => void;
+  onViewProfile?: (profileId: string) => void;
+}
+
+export default function ProfileViewsScreen({ onBack: propOnBack, onOpenChat: propOnOpenChat, onViewProfile: propOnViewProfile }: ProfileViewsScreenProps = {}) {
   const router = useRouter();
+  const handleBack = propOnBack || (() => router.back());
+  const handleOpenChat = (peerId: string) => propOnOpenChat ? propOnOpenChat(peerId) : router.push(`/chat/${peerId}` as any);
+  const handleViewProfile = (profileId: string) => propOnViewProfile ? propOnViewProfile(profileId) : router.push(`/profile/${profileId}` as any);
   const { profile } = useAuth();
   const [viewsList, setViewsList] = useState<ViewItem[]>([]);
   const [photosMap, setPhotosMap] = useState<Record<string, string>>({});
@@ -169,7 +178,7 @@ export default function ProfileViewsScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <Text style={styles.backBtnText}>‹ Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Who Viewed My Profile</Text>
@@ -216,7 +225,7 @@ export default function ProfileViewsScreen() {
               <View style={styles.card}>
                 <View style={styles.cardMain}>
                   <TouchableOpacity
-                    onPress={() => router.push(`/profile/${p.id}` as any)}
+                    onPress={() => handleViewProfile(p.id)}
                     activeOpacity={0.8}
                   >
                     {photoUrl ? (
@@ -233,7 +242,7 @@ export default function ProfileViewsScreen() {
                   <View style={styles.infoWrapper}>
                     <View style={styles.nameRow}>
                       <TouchableOpacity
-                        onPress={() => router.push(`/profile/${p.id}` as any)}
+                        onPress={() => handleViewProfile(p.id)}
                         style={{ flex: 1 }}
                       >
                         <Text style={styles.nameText} numberOfLines={1}>
