@@ -81,7 +81,7 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
       // 1. Fetch profile details via RPC function to comply with RLS policy
       const { data: profileData, error: profileError } = await supabase
         .rpc('get_peer_profile', { _id: id })
-        .single();
+        .maybeSingle();
 
       if (profileError) {
         console.error('Error fetching profile detail:', profileError.message);

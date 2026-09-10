@@ -96,13 +96,15 @@ export default function ChatsListScreen() {
 
       const peerArray = Array.from(peerIds);
 
-      // 3. Fetch peer profile details
-      const { data: peersData, error: peersError } = await supabase
-        .from('profiles')
-        .select('id, full_name, gender, occupation, cover_image_path, bureaus(name)')
-        .in('id', peerArray);
-
-      if (peersError) throw peersError;
+      // 3. Fetch peer profile details via RPC function
+      const peersData = (
+        await Promise.all(
+          peerArray.map(async (pId) => {
+            const { data } = await supabase.rpc('get_peer_profile', { _id: pId }).maybeSingle();
+            return data;
+          })
+        )
+      ).filter(Boolean);
 
       // 4. Fetch last message and unread count for each peer
       const convList: ConversationItem[] = await Promise.all(
@@ -113,7 +115,7 @@ export default function ChatsListScreen() {
             gender: peerRow.gender || 'female',
             occupation: peerRow.occupation,
             cover_image_path: peerRow.cover_image_path,
-            bureau_name: peerRow.bureaus?.name,
+            bureau_name: peerRow.bureau_name,
           };
 
           // Get last message

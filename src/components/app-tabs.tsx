@@ -41,15 +41,15 @@ export default function AppTabs() {
       </View>
 
       {/* Tab Bar Container */}
-      <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={[styles.tabBarContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 8 }]}>
         <View style={styles.tabBar}>
           <TouchableOpacity
             style={styles.tabItem}
             onPress={() => setActiveTab('home')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabIcon, activeTab === 'home' && styles.tabActiveText]}>
-              home
+            <Text style={styles.tabIcon}>
+              {activeTab === 'home' ? '🏠' : '🏠'}
             </Text>
             <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabActiveText]}>
               Matches
@@ -61,8 +61,8 @@ export default function AppTabs() {
             onPress={() => setActiveTab('favorites')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabIcon, activeTab === 'favorites' && styles.tabActiveText]}>
-              heart
+            <Text style={styles.tabIcon}>
+              {activeTab === 'favorites' ? '💖' : '🤍'}
             </Text>
             <Text style={[styles.tabLabel, activeTab === 'favorites' && styles.tabActiveText]}>
               Favorites
@@ -74,8 +74,8 @@ export default function AppTabs() {
             onPress={() => setActiveTab('profile')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabIcon, activeTab === 'profile' && styles.tabActiveText]}>
-              person
+            <Text style={styles.tabIcon}>
+              {activeTab === 'profile' ? '👤' : '👤'}
             </Text>
             <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabActiveText]}>
               My Profile
@@ -99,10 +99,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#EFEAE2',
-    paddingTop: 8,
+    paddingTop: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 4,
   },
   tabBar: {
-    height: 48,
+    height: 46,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
@@ -114,19 +119,16 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   tabIcon: {
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    fontSize: 14,
-    color: '#998E90',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
+    fontSize: 18,
   },
   tabLabel: {
     fontSize: 11,
     fontWeight: '600',
     color: '#998E90',
-    marginTop: 4,
+    marginTop: 2,
   },
   tabActiveText: {
     color: '#8B1E3F',
+    fontWeight: '700',
   },
 });

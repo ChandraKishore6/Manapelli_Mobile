@@ -64,12 +64,10 @@ export default function ChatDetailScreen() {
     if (!profile?.id || !user?.id || !peerProfileId) return;
 
     try {
-      // 1. Fetch Peer Profile info
+      // 1. Fetch Peer Profile info via get_peer_profile RPC
       const { data: peerData, error: peerError } = await supabase
-        .from('profiles')
-        .select('id, user_id, full_name, gender, occupation, cover_image_path, bureaus(name)')
-        .eq('id', peerProfileId)
-        .single();
+        .rpc('get_peer_profile', { _id: peerProfileId })
+        .maybeSingle();
 
       if (peerError) {
         console.error('Error fetching peer profile:', peerError.message);
@@ -81,7 +79,7 @@ export default function ChatDetailScreen() {
           gender: peerData.gender || 'female',
           occupation: peerData.occupation,
           cover_image_path: peerData.cover_image_path,
-          bureau_name: (peerData as any).bureaus?.name,
+          bureau_name: peerData.bureau_name,
         };
         setPeerProfile(p);
 

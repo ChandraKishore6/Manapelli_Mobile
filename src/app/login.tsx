@@ -103,7 +103,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
         {/* Header */}
@@ -240,8 +240,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     padding: 24,
+    paddingBottom: 50,
   },
   headerContainer: {
     alignItems: 'center',
