@@ -17,6 +17,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { getCachedSignedUrls } from '../lib/photoCache';
 import { SupportModal } from '../components/support-modal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -37,6 +38,8 @@ export interface MatchProfile {
   image_paths?: string[];
   signed_images?: string[];
   signed_cover_url?: string | null;
+  bureau_id: string;
+  is_home_bureau?: boolean;
   bureau: {
     name: string;
   };
@@ -53,6 +56,9 @@ export function MatchCard({
   formatSalary,
   isFavorite = false,
   onToggleFavorite,
+  onExpressInterest,
+  onSendMessage,
+  interestStatus,
 }: {
   item: MatchProfile;
   onPress: () => void;
@@ -60,6 +66,9 @@ export function MatchCard({
   formatSalary: (salary: number | null, currency: string) => string;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  onExpressInterest?: () => void;
+  onSendMessage?: () => void;
+  interestStatus?: 'pending' | 'accepted' | 'declined' | null;
 }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -191,9 +200,14 @@ export function MatchCard({
       </View>
 
       <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.cardDetails}>
-        <Text style={styles.cardName}>
-          {item.full_name}, <Text style={styles.cardAge}>{calculateAge(item.dob)}</Text>
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.cardName}>
+            {item.full_name}, <Text style={styles.cardAge}>{calculateAge(item.dob)}</Text>
+          </Text>
+          {!item.is_home_bureau && (
+            <Text style={styles.crossBureauTag}>🌐 {item.bureau?.name || 'Partner Bureau'}</Text>
+          )}
+        </View>
 
         <Text style={styles.cardSub}>
           {item.occupation || 'Private Service'}
@@ -217,7 +231,50 @@ export function MatchCard({
           </Text>
         </View>
 
-        <Text style={styles.viewProfileBtn}>View Complete Biodata →</Text>
+        {/* Card Action Buttons: Express Interest & Send Message */}
+        <View style={styles.cardActionsRow}>
+          <TouchableOpacity
+            style={[
+              styles.cardActionBtn,
+              interestStatus === 'accepted'
+                ? styles.cardActionAccepted
+                : interestStatus === 'pending'
+                ? styles.cardActionPending
+                : styles.cardActionInterest,
+            ]}
+            onPress={(e) => {
+              e.stopPropagation();
+              if (onExpressInterest) onExpressInterest();
+            }}
+          >
+            <Text
+              style={[
+                styles.cardActionBtnText,
+                interestStatus === 'accepted'
+                  ? styles.cardActionAcceptedText
+                  : interestStatus === 'pending'
+                  ? styles.cardActionPendingText
+                  : styles.cardActionInterestText,
+              ]}
+            >
+              {interestStatus === 'accepted'
+                ? '🎉 Connected'
+                : interestStatus === 'pending'
+                ? '⏳ Interest Sent'
+                : '💖 Express Interest'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.cardActionBtn, styles.cardActionChat]}
+            onPress={(e) => {
+              e.stopPropagation();
+              if (onSendMessage) onSendMessage();
+            }}
+          >
+            <Text style={styles.cardActionChatText}>💬 Send Message</Text>
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -349,88 +406,144 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
     }
   };
 
+  const [bureauFilter, setBureauFilter] = useState<'all' | 'home'>('all');
+  const [interestsMap, setInterestsMap] = useState<Record<string, 'pending' | 'accepted' | 'declined'>>({});
+
+  const fetchInterestsMap = async () => {
+    if (!profile?.id) return;
+    try {
+      const { data } = await supabase
+        .from('interests')
+        .select('id, status, sender_profile_id, receiver_profile_id')
+        .or(`sender_profile_id.eq.${profile.id},receiver_profile_id.eq.${profile.id}`);
+
+      if (data) {
+        const map: Record<string, 'pending' | 'accepted' | 'declined'> = {};
+        data.forEach((row: any) => {
+          const peerId = row.sender_profile_id === profile.id ? row.receiver_profile_id : row.sender_profile_id;
+          map[peerId] = row.status;
+        });
+        setInterestsMap(map);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleExpressInterest = async (targetProfileId: string) => {
+    if (!profile?.id) return;
+    try {
+      const currentStatus = interestsMap[targetProfileId];
+      if (currentStatus) {
+        Alert.alert('Info', currentStatus === 'accepted' ? 'You are already connected!' : 'Interest request already sent.');
+        return;
+      }
+
+      const { error } = await supabase.from('interests').insert({
+        sender_profile_id: profile.id,
+        receiver_profile_id: targetProfileId,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+      Alert.alert('Success 🎉', 'Interest expressed successfully!');
+      setInterestsMap((prev) => ({ ...prev, [targetProfileId]: 'pending' }));
+      fetchSocialSummary();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not express interest.');
+    }
+  };
+
   const fetchMatches = async () => {
     if (!profile) return;
     setLoading(true);
     try {
-      const oppositeGender = profile.gender === 'male' ? 'female' : 'male';
+      const oppositeGender = profile.gender === 'male' ? 'female' : profile.gender === 'female' ? 'male' : null;
 
-      // 1. Fetch blocked user IDs
-      const { data: blockedList } = await supabase
-        .from('blocked_users')
-        .select('blocked_id')
-        .eq('blocker_id', profile.user_id);
-      
-      const blockedUserIds = (blockedList || []).map((b) => b.blocked_id);
-      let blockedProfileIds: string[] = [];
-      if (blockedUserIds.length > 0) {
-        const { data: blockedProfiles } = await supabase
-          .from('profiles')
-          .select('id')
-          .in('user_id', blockedUserIds);
-        if (blockedProfiles) {
-          blockedProfileIds = blockedProfiles.map((p) => p.id);
-        }
+      // 1. Fetch blocked profile IDs
+      const { data: userBlocks } = await supabase
+        .from('user_blocks')
+        .select('blocked_profile_id')
+        .eq('blocker_profile_id', profile.id);
+
+      const blockedProfileIds = (userBlocks || []).map((b: any) => b.blocked_profile_id);
+
+      // 2. Fetch all approved profiles across all bureaus
+      const { data: allProfiles, error: profError } = await supabase
+        .from('profiles')
+        .select(`
+          id, bureau_id, full_name, dob, gender, occupation, salary, salary_currency,
+          native_place, current_place, community_id, community, partner_preferences,
+          cover_image_path, allow_cross_bureau,
+          bureaus(id, name, serves_all_communities)
+        `)
+        .eq('status', 'approved')
+        .neq('id', profile.id);
+
+      if (profError) {
+        console.error('Error fetching profiles:', profError.message);
       }
 
-      const { data, error } = await supabase
-        .rpc('list_peer_profiles', { _bureau_id: profile.bureau_id });
+      // 3. Fetch bureau_communities for cross-bureau serving check
+      const { data: bComms } = await supabase
+        .from('bureau_communities')
+        .select('bureau_id, community_id');
 
-      if (error) {
-        console.error(error);
-      } else if (data) {
-        const oppositeMatches = (data as MatchProfile[]).filter(
-          (item) => item.gender === oppositeGender && !blockedProfileIds.includes(item.id)
-        );
+      const bCommsMap = new Map<string, Set<string>>();
+      (bComms || []).forEach((bc: any) => {
+        if (!bCommsMap.has(bc.bureau_id)) bCommsMap.set(bc.bureau_id, new Set());
+        bCommsMap.get(bc.bureau_id)!.add(bc.community_id);
+      });
 
-        // Gather all image paths to sign them in a single batch
-        const allPaths: string[] = [];
-        oppositeMatches.forEach((m) => {
-          if (m.image_paths && m.image_paths.length > 0) {
-            allPaths.push(...m.image_paths);
-          } else if (m.cover_image_path) {
-            allPaths.push(m.cover_image_path);
+      // 4. Filter profiles (same community, cross bureau allowed)
+      const filtered = (allProfiles || []).filter((p: any) => {
+        if (blockedProfileIds.includes(p.id)) return false;
+        if (oppositeGender && p.gender !== oppositeGender) return false;
+
+        // Community matching: match by community_id or community name
+        if (profile.community_id && p.community_id && p.community_id !== profile.community_id) return false;
+        if (profile.community && p.community && p.community.toLowerCase() !== profile.community.toLowerCase()) return false;
+
+        // Cross-bureau serving check
+        if (p.bureau_id !== profile.bureau_id) {
+          if (p.allow_cross_bureau === false) return false;
+          const servesAll = p.bureaus?.serves_all_communities;
+          if (!servesAll && profile.community_id) {
+            const bureauCommunities = bCommsMap.get(p.bureau_id);
+            if (!bureauCommunities || !bureauCommunities.has(profile.community_id)) {
+              return false;
+            }
           }
-        });
-
-        if (allPaths.length > 0) {
-          const { data: signedData } = await supabase
-            .storage
-            .from('profile-images')
-            .createSignedUrls(allPaths, 3600);
-
-          if (signedData) {
-            const urlMap = new Map<string, string>();
-            signedData.forEach((item) => {
-              if (item.signedUrl && item.path) {
-                urlMap.set(item.path, item.signedUrl);
-              }
-            });
-
-            const matchesWithUrls = oppositeMatches.map((m) => {
-              const urls = (m.image_paths || [])
-                .map((path) => urlMap.get(path))
-                .filter((url): url is string => !!url);
-              
-              if (urls.length === 0 && m.cover_image_path) {
-                const coverUrl = urlMap.get(m.cover_image_path);
-                if (coverUrl) urls.push(coverUrl);
-              }
-
-              return {
-                ...m,
-                signed_images: urls,
-                signed_cover_url: m.cover_image_path ? urlMap.get(m.cover_image_path) || null : null,
-              };
-            });
-            setMatches(matchesWithUrls);
-          } else {
-            setMatches(oppositeMatches.map(m => ({ ...m, signed_images: [] })));
-          }
-        } else {
-          setMatches(oppositeMatches.map(m => ({ ...m, signed_images: [] })));
         }
-      }
+        return true;
+      });
+
+      // 5. Pre-fetch 24h photo URLs
+      const paths = filtered.map((p: any) => p.cover_image_path);
+      const urlMap = await getCachedSignedUrls(paths);
+
+      const parsedMatches: MatchProfile[] = filtered.map((m: any) => ({
+        id: m.id,
+        full_name: m.full_name || 'Candidate',
+        dob: m.dob,
+        gender: m.gender,
+        occupation: m.occupation,
+        current_place: m.current_place,
+        native_place: m.native_place,
+        community: m.community,
+        salary: m.salary,
+        salary_currency: m.salary_currency || 'INR',
+        cover_image_path: m.cover_image_path,
+        signed_cover_url: m.cover_image_path ? urlMap[m.cover_image_path] || null : null,
+        bureau_id: m.bureau_id,
+        is_home_bureau: m.bureau_id === profile.bureau_id,
+        bureau: {
+          name: m.bureaus?.name || 'Independent Bureau',
+        },
+      }));
+
+      setMatches(parsedMatches);
+      fetchInterestsMap();
     } catch (err) {
       console.error(err);
     } finally {
@@ -595,9 +708,30 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
         </TouchableOpacity>
       </View>
 
+      {/* Bureau Filter Toggle Bar */}
+      <View style={styles.filterToggleRow}>
+        <TouchableOpacity
+          style={[styles.filterToggleBtn, bureauFilter === 'all' && styles.filterToggleBtnActive]}
+          onPress={() => setBureauFilter('all')}
+        >
+          <Text style={[styles.filterToggleText, bureauFilter === 'all' && styles.filterToggleTextActive]}>
+            🌐 All Community ({matches.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.filterToggleBtn, bureauFilter === 'home' && styles.filterToggleBtnActive]}
+          onPress={() => setBureauFilter('home')}
+        >
+          <Text style={[styles.filterToggleText, bureauFilter === 'home' && styles.filterToggleTextActive]}>
+            🏛️ {bureauName ? (bureauName.length > 14 ? bureauName.slice(0, 14) + '...' : bureauName) : 'My Bureau'} ({matches.filter((m) => m.is_home_bureau).length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Match List */}
       <FlatList
-        data={matches}
+        data={matches.filter((m) => (bureauFilter === 'home' ? m.is_home_bureau : true))}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
@@ -617,6 +751,9 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
             formatSalary={formatSalary}
             isFavorite={favoritesList.includes(item.id)}
             onToggleFavorite={() => toggleFavorite(item.id)}
+            onExpressInterest={() => handleExpressInterest(item.id)}
+            onSendMessage={() => router.push(`/chat/${item.id}` as any)}
+            interestStatus={interestsMap[item.id] || null}
           />
         )}
       />
@@ -1021,6 +1158,105 @@ const styles = StyleSheet.create({
   quickNavBadgeText: {
     color: '#ffffff',
     fontSize: 10,
+    fontWeight: '700',
+  },
+  filterToggleRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    backgroundColor: '#FAF7F2',
+    borderBottomWidth: 1,
+    borderColor: '#EFEAE2',
+  },
+  filterToggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFEAE2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterToggleBtnActive: {
+    backgroundColor: '#8B1E3F',
+    borderColor: '#8B1E3F',
+  },
+  filterToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#706064',
+  },
+  filterToggleTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  crossBureauTag: {
+    fontSize: 10,
+    color: '#8B1E3F',
+    backgroundColor: '#FFF0F3',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    fontWeight: '600',
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderColor: '#F5ECE2',
+  },
+  cardActionBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardActionInterest: {
+    backgroundColor: '#e11d48',
+  },
+  cardActionInterestText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  cardActionPending: {
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  cardActionPendingText: {
+    color: '#b45309',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  cardActionAccepted: {
+    backgroundColor: '#d1fae5',
+    borderWidth: 1,
+    borderColor: '#10b981',
+  },
+  cardActionAcceptedText: {
+    color: '#047857',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  cardActionChat: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e11d48',
+  },
+  cardActionChatText: {
+    color: '#e11d48',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  cardActionBtnText: {
+    fontSize: 13,
     fontWeight: '700',
   },
 });

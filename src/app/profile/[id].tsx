@@ -69,6 +69,10 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
   const [blocking, setBlocking] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [galleryVisible, setGalleryVisible] = useState(false);
+  const [interestStatus, setInterestStatus] = useState<'pending' | 'accepted' | 'declined' | null>(null);
+  const [interestId, setInterestId] = useState<string | null>(null);
+  const [isInterestSender, setIsInterestSender] = useState(false);
+  const [interestLoading, setInterestLoading] = useState(false);
 
   const fetchProfileDetails = async () => {
     if (!id) return;
@@ -124,19 +128,77 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
           .eq('user_id', meUser.user.id)
           .maybeSingle();
 
-        if (myProf && myProf.id !== id) {
-          try {
-            await supabase.from('profile_views').insert({
-              viewer_profile_id: myProf.id,
-              viewed_profile_id: id,
-            });
-          } catch {}
+        if (myProf) {
+          if (myProf.id !== id) {
+            try {
+              await supabase.from('profile_views').insert({
+                viewer_profile_id: myProf.id,
+                viewed_profile_id: id,
+              });
+            } catch {}
+          }
+
+          // Fetch interest status
+          const { data: intRow } = await supabase
+            .from('interests')
+            .select('id, status, sender_profile_id')
+            .or(`and(sender_profile_id.eq.${myProf.id},receiver_profile_id.eq.${id}),and(sender_profile_id.eq.${id},receiver_profile_id.eq.${myProf.id})`)
+            .maybeSingle();
+
+          if (intRow) {
+            setInterestStatus(intRow.status);
+            setInterestId(intRow.id);
+            setIsInterestSender(intRow.sender_profile_id === myProf.id);
+          }
         }
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExpressInterest = async () => {
+    if (!id || interestLoading) return;
+    setInterestLoading(true);
+    try {
+      const { data: meUser } = await supabase.auth.getUser();
+      if (!meUser?.user) return;
+      const { data: myProf } = await supabase.from('profiles').select('id').eq('user_id', meUser.user.id).single();
+
+      if (interestStatus === 'pending' && !isInterestSender && interestId) {
+        // Accept interest
+        const { error } = await supabase
+          .from('interests')
+          .update({ status: 'accepted', updated_at: new Date().toISOString() })
+          .eq('id', interestId);
+
+        if (error) throw error;
+        setInterestStatus('accepted');
+        Alert.alert('Interest Accepted 🎉', 'You can now start chatting with this candidate!');
+      } else if (!interestStatus) {
+        // Send interest
+        const { data: inserted, error } = await supabase
+          .from('interests')
+          .insert({
+            sender_profile_id: myProf.id,
+            receiver_profile_id: id,
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        setInterestStatus('pending');
+        setIsInterestSender(true);
+        setInterestId(inserted.id);
+        Alert.alert('Success 🎉', 'Interest expressed successfully!');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not express interest.');
+    } finally {
+      setInterestLoading(false);
     }
   };
 
@@ -525,6 +587,48 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
             <Text style={styles.communityText}>
               🌿 {profile.community || 'Community Not Specified'}
             </Text>
+          </View>
+
+          {/* Primary Social Actions: Send Message & Express Interest */}
+          <View style={styles.primaryActionsRow}>
+            <TouchableOpacity
+              style={[
+                styles.primaryActionBtn,
+                interestStatus === 'accepted'
+                  ? styles.primaryAcceptedBtn
+                  : interestStatus === 'pending'
+                  ? styles.primaryPendingBtn
+                  : styles.primaryInterestBtn,
+              ]}
+              onPress={handleExpressInterest}
+              disabled={interestLoading || (interestStatus === 'pending' && isInterestSender)}
+            >
+              <Text
+                style={[
+                  styles.primaryActionBtnText,
+                  interestStatus === 'accepted'
+                    ? styles.primaryAcceptedBtnText
+                    : interestStatus === 'pending'
+                    ? styles.primaryPendingBtnText
+                    : styles.primaryInterestBtnText,
+                ]}
+              >
+                {interestStatus === 'accepted'
+                  ? '🎉 Connected'
+                  : interestStatus === 'pending' && isInterestSender
+                  ? '⏳ Interest Pending'
+                  : interestStatus === 'pending' && !isInterestSender
+                  ? '✓ Accept Interest'
+                  : '💖 Express Interest'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.primaryActionBtn, styles.primaryChatBtn]}
+              onPress={() => router.push(`/chat/${id}` as any)}
+            >
+              <Text style={styles.primaryChatBtnText}>💬 Send Message</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Section: Personal Information */}
@@ -969,5 +1073,60 @@ const styles = StyleSheet.create({
     color: '#B23B3B',
     fontSize: 14,
     fontWeight: '600',
+  },
+  primaryActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  primaryActionBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryInterestBtn: {
+    backgroundColor: '#8B1E3F',
+  },
+  primaryInterestBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  primaryPendingBtn: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  primaryPendingBtnText: {
+    color: '#B45309',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  primaryAcceptedBtn: {
+    backgroundColor: '#D1FAE5',
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  primaryAcceptedBtnText: {
+    color: '#047857',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  primaryChatBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#8B1E3F',
+  },
+  primaryChatBtnText: {
+    color: '#8B1E3F',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  primaryActionBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
