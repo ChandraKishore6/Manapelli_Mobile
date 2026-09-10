@@ -205,7 +205,7 @@ export function MatchCard({
             {item.full_name}, <Text style={styles.cardAge}>{calculateAge(item.dob)}</Text>
           </Text>
           {!item.is_home_bureau && (
-            <Text style={styles.crossBureauTag}>🌐 {item.bureau?.name || 'Partner Bureau'}</Text>
+            <Text style={styles.crossBureauTag}>🌐 {item.bureau?.name || 'Partner Bureau'} · Partner</Text>
           )}
         </View>
 

@@ -474,10 +474,10 @@ export default function RegisterProfileScreen({
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>
-                    Share profile with partner bureaus
+                    Include my profile in partner bureau matches within my community (Recommended)
                   </Text>
                   <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                    Allow verified partner marriage bureaus in the {selectedCommunityName || 'selected'} community to view and present your profile to candidates. (Recommended)
+                    Allows verified candidates from trusted partner bureaus in your community to view your profile and connect.
                   </Text>
                 </View>
               </TouchableOpacity>
