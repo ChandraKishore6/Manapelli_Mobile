@@ -458,72 +458,20 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
     if (!profile) return;
     setLoading(true);
     try {
-      const oppositeGender = profile.gender === 'male' ? 'female' : profile.gender === 'female' ? 'male' : null;
+      // Call SECURITY DEFINER RPC to bypass RLS securely for cross-bureau matches
+      const { data: rawMatches, error: rpcError } = await supabase.rpc('list_visible_matches');
 
-      // 1. Fetch blocked profile IDs
-      const { data: userBlocks } = await supabase
-        .from('user_blocks')
-        .select('blocked_profile_id')
-        .eq('blocker_profile_id', profile.id);
-
-      const blockedProfileIds = (userBlocks || []).map((b: any) => b.blocked_profile_id);
-
-      // 2. Fetch all approved profiles across all bureaus
-      const { data: allProfiles, error: profError } = await supabase
-        .from('profiles')
-        .select(`
-          id, bureau_id, full_name, dob, gender, occupation, salary, salary_currency,
-          native_place, current_place, community_id, community, partner_preferences,
-          cover_image_path, allow_cross_bureau,
-          bureaus(id, name, serves_all_communities)
-        `)
-        .eq('status', 'approved')
-        .neq('id', profile.id);
-
-      if (profError) {
-        console.error('Error fetching profiles:', profError.message);
+      if (rpcError) {
+        console.error('Error fetching visible matches:', rpcError.message);
       }
 
-      // 3. Fetch bureau_communities for cross-bureau serving check
-      const { data: bComms } = await supabase
-        .from('bureau_communities')
-        .select('bureau_id, community_id');
+      const matchData = rawMatches || [];
 
-      const bCommsMap = new Map<string, Set<string>>();
-      (bComms || []).forEach((bc: any) => {
-        if (!bCommsMap.has(bc.bureau_id)) bCommsMap.set(bc.bureau_id, new Set());
-        bCommsMap.get(bc.bureau_id)!.add(bc.community_id);
-      });
-
-      // 4. Filter profiles (same community, cross bureau allowed)
-      const filtered = (allProfiles || []).filter((p: any) => {
-        if (blockedProfileIds.includes(p.id)) return false;
-        if (oppositeGender && p.gender !== oppositeGender) return false;
-
-        // Community matching: match by community_id or community name
-        const profCommunityId = (profile as any).community_id;
-        if (profCommunityId && p.community_id && p.community_id !== profCommunityId) return false;
-        if (profile.community && p.community && p.community.toLowerCase() !== profile.community.toLowerCase()) return false;
-
-        // Cross-bureau serving check
-        if (p.bureau_id !== profile.bureau_id) {
-          if (p.allow_cross_bureau === false) return false;
-          const servesAll = p.bureaus?.serves_all_communities;
-          if (!servesAll && profCommunityId) {
-            const bureauCommunities = bCommsMap.get(p.bureau_id);
-            if (!bureauCommunities || !bureauCommunities.has(profCommunityId)) {
-              return false;
-            }
-          }
-        }
-        return true;
-      });
-
-      // 5. Pre-fetch 24h photo URLs
-      const paths = filtered.map((p: any) => p.cover_image_path);
+      // Pre-fetch 24h photo URLs
+      const paths = matchData.map((p: any) => p.cover_image_path);
       const urlMap = await getCachedSignedUrls(paths);
 
-      const parsedMatches: MatchProfile[] = filtered.map((m: any) => ({
+      const parsedMatches: MatchProfile[] = matchData.map((m: any) => ({
         id: m.id,
         full_name: m.full_name || 'Candidate',
         dob: m.dob,
@@ -537,9 +485,9 @@ export default function HomeScreen({ onViewProfile }: HomeScreenProps) {
         cover_image_path: m.cover_image_path,
         signed_cover_url: m.cover_image_path ? urlMap[m.cover_image_path] || null : null,
         bureau_id: m.bureau_id,
-        is_home_bureau: m.bureau_id === profile.bureau_id,
+        is_home_bureau: m.is_home_bureau,
         bureau: {
-          name: m.bureaus?.name || 'Independent Bureau',
+          name: m.bureau_name || 'Independent Bureau',
         },
       }));
 
