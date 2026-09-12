@@ -65,6 +65,62 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
+const InlinePhotoStrip = ({ profileId }: { profileId: string }) => {
+  const [thumbUrls, setThumbUrls] = useState<string[]>([]);
+  const [loadingThumbs, setLoadingThumbs] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchThumbs = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_profile_image_urls', {
+          p_profile_id: profileId,
+        });
+        if (cancelled || error || !data || data.length === 0) {
+          setLoadingThumbs(false);
+          return;
+        }
+        const paths = data.map((img: any) => img.storage_path);
+        const { data: signedData } = await supabase.storage
+          .from('profile-images')
+          .createSignedUrls(paths, 3600);
+        if (!cancelled && signedData) {
+          setThumbUrls(signedData.filter((s: any) => s.signedUrl).map((s: any) => s.signedUrl));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!cancelled) setLoadingThumbs(false);
+      }
+    };
+    fetchThumbs();
+    return () => { cancelled = true; };
+  }, [profileId]);
+
+  if (loadingThumbs) {
+    return (
+      <View style={{ flexDirection: 'row', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F5F0EA' }}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: '#F5F0EA' }} />
+        ))}
+      </View>
+    );
+  }
+
+  if (thumbUrls.length === 0) return null;
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F5F0EA' }}>
+      {thumbUrls.map((url, idx) => (
+        <Image key={idx} source={{ uri: url }} style={{ width: 48, height: 48, borderRadius: 8, marginRight: 6, borderWidth: 1, borderColor: '#EFEAE2' }} contentFit="cover" />
+      ))}
+      <View style={{ backgroundColor: '#FAF5EE', width: 48, height: 48, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#EFEAE2' }}>
+        <Text style={{ fontSize: 10, color: '#998E90', fontWeight: '600' }}>{thumbUrls.length} 📷</Text>
+      </View>
+    </ScrollView>
+  );
+};
+
 export default function BureauDashboard() {
   const { role, signOut } = useAuth();
   const bureauId = role?.bureau_id;
@@ -970,6 +1026,19 @@ export default function BureauDashboard() {
                 </View>
                 <StatusBadge status={item.status} />
               </View>
+
+              {item.status === 'approved' && item.last_password && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F5F0EA' }}>
+                  <Text style={{ fontSize: 11, color: '#2E7D32', fontWeight: '600' }}>🔑 Password: </Text>
+                  <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: '#1B5E20', fontWeight: '600' }}>{item.last_password}</Text>
+                  </View>
+                </View>
+              )}
+
+              {item.status === 'pending' && (
+                <InlinePhotoStrip profileId={item.id} />
+              )}
 
               {item.status === 'pending' && (
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F5F0EA' }}>

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { SupportModal } from '../components/support-modal';
@@ -26,6 +27,10 @@ export default function MyProfileScreen() {
   const [updating, setUpdating] = useState(false);
   const [supportVisible, setSupportVisible] = useState(false);
   const [signedCoverUrl, setSignedCoverUrl] = useState<string | null>(null);
+
+  const [profileImages, setProfileImages] = useState<{id: string; storage_path: string; is_cover: boolean; sort_order: number; signedUrl?: string}[]>([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Form edit states
   const [currentPlace, setCurrentPlace] = useState('');
@@ -69,6 +74,12 @@ export default function MyProfileScreen() {
     };
     fetchSignedCover();
   }, [profile]);
+
+  useEffect(() => {
+    if (profile) {
+      fetchProfileImages();
+    }
+  }, [profile?.id]);
 
   const handleStartEditing = () => {
     if (!profile) return;
@@ -142,6 +153,158 @@ export default function MyProfileScreen() {
         }
       ]
     );
+  };
+
+  const fetchProfileImages = async () => {
+    if (!profile) return;
+    setLoadingPhotos(true);
+    try {
+      const { data, error } = await supabase
+        .from('profile_images')
+        .select('id, storage_path, is_cover, sort_order')
+        .eq('profile_id', profile.id)
+        .order('sort_order');
+      if (error || !data) { setLoadingPhotos(false); return; }
+      if (data.length === 0) { setProfileImages([]); setLoadingPhotos(false); return; }
+      const paths = data.map((img) => img.storage_path);
+      const { data: signedData } = await supabase.storage
+        .from('profile-images')
+        .createSignedUrls(paths, 3600);
+      const urlMap = new Map<string, string>();
+      if (signedData) {
+        signedData.forEach((item: any, i: number) => {
+          if (item?.signedUrl) urlMap.set(paths[i], item.signedUrl);
+        });
+      }
+      setProfileImages(data.map((img) => ({ ...img, signedUrl: urlMap.get(img.storage_path) })));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingPhotos(false);
+    }
+  };
+
+  const handleUploadPhoto = async () => {
+    if (!profile) return;
+    if (profileImages.length >= 5) {
+      Alert.alert('Limit Reached', 'Maximum 5 photos allowed per profile');
+      return;
+    }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Please grant photo access to upload photos');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+    setUploadingPhoto(true);
+    try {
+      const uri = result.assets[0].uri;
+      const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload = function () {
+          const reader = new FileReader();
+          reader.onloadend = function () {
+            try {
+              const res = reader.result as string;
+              const base64Data = res.split(',')[1];
+              const binaryString = atob(base64Data);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let j = 0; j < binaryString.length; j++) {
+                bytes[j] = binaryString.charCodeAt(j);
+              }
+              resolve(bytes.buffer);
+            } catch (err) { reject(err); }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(xhr.response);
+        };
+        xhr.onerror = reject;
+        xhr.responseType = 'blob';
+        xhr.open('GET', uri, true);
+        xhr.send(null);
+      });
+
+      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const filename = `${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const storagePath = `${profile.bureau_id}/${profile.id}/${filename}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(storagePath, arrayBuffer, { contentType: 'image/jpeg', cacheControl: '3600' });
+
+      if (uploadError) {
+        Alert.alert('Upload Failed', uploadError.message);
+        return;
+      }
+
+      const isFirst = profileImages.length === 0;
+      const { error: dbError } = await supabase.from('profile_images').insert({
+        profile_id: profile.id,
+        bureau_id: profile.bureau_id,
+        storage_path: storagePath,
+        sort_order: profileImages.length,
+        is_cover: isFirst,
+      });
+
+      if (dbError) {
+        await supabase.storage.from('profile-images').remove([storagePath]);
+        Alert.alert('Error', dbError.message);
+        return;
+      }
+
+      if (isFirst) {
+        await supabase.from('profiles').update({ cover_image_path: storagePath }).eq('id', profile.id);
+        await refreshProfile();
+      }
+
+      Alert.alert('Success', 'Photo uploaded successfully');
+      await fetchProfileImages();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleSetCover = async (imgId: string, path: string) => {
+    if (!profile) return;
+    try {
+      await supabase.from('profile_images').update({ is_cover: false }).eq('profile_id', profile.id);
+      await supabase.from('profile_images').update({ is_cover: true }).eq('id', imgId);
+      await supabase.from('profiles').update({ cover_image_path: path }).eq('id', profile.id);
+      await refreshProfile();
+      await fetchProfileImages();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to set cover photo');
+    }
+  };
+
+  const handleDeletePhoto = async (imgId: string, path: string, wasCover: boolean) => {
+    Alert.alert('Delete Photo', 'Are you sure you want to remove this photo?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await supabase.storage.from('profile-images').remove([path]);
+            await supabase.from('profile_images').delete().eq('id', imgId);
+            if (wasCover) {
+              await supabase.from('profiles').update({ cover_image_path: null }).eq('id', profile!.id);
+              await refreshProfile();
+            }
+            await fetchProfileImages();
+          } catch (err: any) {
+            Alert.alert('Error', err.message || 'Failed to delete photo');
+          }
+        },
+      },
+    ]);
   };
 
   const calculateAge = (dobString: string) => {
@@ -364,6 +527,71 @@ export default function MyProfileScreen() {
               </View>
             )}
           </View>
+
+          {/* My Photos Section */}
+          {!isEditing && (
+            <View style={styles.detailsSection}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F5ECE2', paddingBottom: 10 }}>
+                <Text style={styles.sectionTitle}>My Photos</Text>
+                <Text style={{ fontSize: 13, color: '#998E90' }}>{profileImages.length}/5</Text>
+              </View>
+
+              {loadingPhotos ? (
+                <ActivityIndicator size="small" color="#8B1E3F" style={{ marginVertical: 20 }} />
+              ) : (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                  {profileImages.map((img) => (
+                    <View key={img.id} style={{ width: '47%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#EFEAE2', position: 'relative' }}>
+                      {img.signedUrl ? (
+                        <Image source={{ uri: img.signedUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                      ) : (
+                        <View style={{ width: '100%', height: '100%', backgroundColor: '#F5F0EA', alignItems: 'center', justifyContent: 'center' }}>
+                          <ActivityIndicator size="small" color="#8B1E3F" />
+                        </View>
+                      )}
+                      {img.is_cover && (
+                        <View style={{ position: 'absolute', top: 6, left: 6, backgroundColor: '#8B1E3F', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>Cover</Text>
+                        </View>
+                      )}
+                      <View style={{ position: 'absolute', bottom: 6, right: 6, flexDirection: 'row', gap: 6 }}>
+                        {!img.is_cover && (
+                          <TouchableOpacity
+                            onPress={() => handleSetCover(img.id, img.storage_path)}
+                            style={{ backgroundColor: 'rgba(255,255,255,0.9)', width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2 }}
+                          >
+                            <Text style={{ fontSize: 14 }}>⭐</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          onPress={() => handleDeletePhoto(img.id, img.storage_path, img.is_cover)}
+                          style={{ backgroundColor: 'rgba(178,59,59,0.9)', width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2 }}
+                        >
+                          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                  {profileImages.length < 5 && (
+                    <TouchableOpacity
+                      onPress={handleUploadPhoto}
+                      disabled={uploadingPhoto}
+                      style={{ width: '47%', aspectRatio: 1, borderRadius: 12, borderWidth: 2, borderStyle: 'dashed', borderColor: '#EFEAE2', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FCFAF6' }}
+                    >
+                      {uploadingPhoto ? (
+                        <ActivityIndicator size="small" color="#8B1E3F" />
+                      ) : (
+                        <>
+                          <Text style={{ fontSize: 28, color: '#8B1E3F', marginBottom: 4 }}>+</Text>
+                          <Text style={{ fontSize: 11, color: '#998E90', fontWeight: '500' }}>Add Photo</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Sign Out Button */}
           {!isEditing && (

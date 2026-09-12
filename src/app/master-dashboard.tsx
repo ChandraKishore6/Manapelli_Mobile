@@ -507,6 +507,36 @@ export default function MasterDashboard() {
         Alert.alert('Update Failed', error.message);
       } else {
         Alert.alert('Success', 'Bureau updated successfully');
+        
+        // Sync bureau_communities junction table after save
+        try {
+          const { data: freshBureau } = await supabase
+            .from('bureaus')
+            .select('serves_all_communities')
+            .eq('id', selectedBureau.id)
+            .single();
+
+          if (freshBureau?.serves_all_communities) {
+            // Bureau serves all communities - ensure all active communities are linked
+            const { data: allActiveComms } = await supabase
+              .from('communities')
+              .select('id')
+              .eq('is_active', true);
+
+            if (allActiveComms && allActiveComms.length > 0) {
+              const rows = allActiveComms.map((c: any) => ({
+                bureau_id: selectedBureau.id,
+                community_id: c.id,
+              }));
+              await supabase
+                .from('bureau_communities')
+                .upsert(rows, { onConflict: 'bureau_id,community_id' });
+            }
+          }
+        } catch (syncErr) {
+          console.error('Bureau communities sync error:', syncErr);
+        }
+
         setIsEditingBureau(false);
         setSelectedBureau(null);
         await fetchMasterData();
@@ -1195,6 +1225,14 @@ export default function MasterDashboard() {
                     <Text style={styles.bureauBadgeText}>
                       🏢 {bureau ? bureau.name : 'Unknown Bureau'}
                     </Text>
+                    {item.status === 'approved' && item.last_password && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                        <Text style={{ fontSize: 10, color: '#2E7D32', fontWeight: '600' }}>🔑 </Text>
+                        <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: '#1B5E20', fontWeight: '600' }}>{item.last_password}</Text>
+                        </View>
+                      </View>
+                    )}
                   </View>
                   <View style={styles.rightInfo}>
                     <View
