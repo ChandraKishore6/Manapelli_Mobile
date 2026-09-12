@@ -3,10 +3,11 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BrandColors, Shadows, Radius } from '@/constants/theme';
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 
 import HomeScreen from '../app/index';
 import MyProfileScreen from '../app/explore';
@@ -20,9 +21,9 @@ import ProfileViewsScreen from '../app/views';
 export type NavRoute = 
   | { screen: 'home' }
   | { screen: 'favorites' }
-  | { screen: 'profile' }
   | { screen: 'interests' }
   | { screen: 'chats' }
+  | { screen: 'profile' }
   | { screen: 'chat_detail'; peerProfileId: string }
   | { screen: 'views' }
   | { screen: 'profile_detail'; profileId: string };
@@ -42,11 +43,11 @@ export default function AppTabs() {
     setNavStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   };
 
-  const switchTab = (tab: 'home' | 'favorites' | 'profile') => {
+  const switchTab = (tab: 'home' | 'favorites' | 'interests' | 'chats' | 'profile') => {
     setNavStack([{ screen: tab }]);
   };
 
-  const activeTabName = isRootTab && (currentRoute.screen === 'favorites' || currentRoute.screen === 'profile')
+  const activeTabName = isRootTab && ['favorites', 'interests', 'chats', 'profile'].includes(currentRoute.screen)
     ? currentRoute.screen
     : 'home';
 
@@ -56,8 +57,8 @@ export default function AppTabs() {
         return (
           <HomeScreen
             onViewProfile={(id) => pushScreen({ screen: 'profile_detail', profileId: id })}
-            onOpenInterests={() => pushScreen({ screen: 'interests' })}
-            onOpenChats={() => pushScreen({ screen: 'chats' })}
+            onOpenInterests={() => switchTab('interests')}
+            onOpenChats={() => switchTab('chats')}
             onOpenViews={() => pushScreen({ screen: 'views' })}
             onOpenChat={(id) => pushScreen({ screen: 'chat_detail', peerProfileId: id })}
           />
@@ -68,12 +69,10 @@ export default function AppTabs() {
             onViewProfile={(id) => pushScreen({ screen: 'profile_detail', profileId: id })}
           />
         );
-      case 'profile':
-        return <MyProfileScreen />;
       case 'interests':
         return (
           <InterestsScreen
-            onBack={popScreen}
+            onBack={() => switchTab('home')}
             onViewProfile={(id) => pushScreen({ screen: 'profile_detail', profileId: id })}
             onOpenChat={(id) => pushScreen({ screen: 'chat_detail', peerProfileId: id })}
           />
@@ -81,10 +80,12 @@ export default function AppTabs() {
       case 'chats':
         return (
           <ChatsListScreen
-            onBack={popScreen}
+            onBack={() => switchTab('home')}
             onOpenChat={(id) => pushScreen({ screen: 'chat_detail', peerProfileId: id })}
           />
         );
+      case 'profile':
+        return <MyProfileScreen />;
       case 'chat_detail':
         return (
           <ChatDetailScreen
@@ -120,25 +121,23 @@ export default function AppTabs() {
         {renderActiveScreen()}
       </View>
 
-      {/* Tab Bar Container - Only rendered when on root tab screens */}
+      {/* Dynamic Floating Bottom Tab Bar - Rendered when on root tabs */}
       {isRootTab && (
-        <View style={[styles.tabBarContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 8 }]}>
+        <View style={[styles.tabBarContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 10 }]}>
           <View style={styles.tabBar}>
-            <TouchableOpacity
-              style={styles.tabItem}
+            <AnimatedPressable
+              style={[styles.tabItem, activeTabName === 'home' && styles.activeTabItem]}
               onPress={() => switchTab('home')}
-              activeOpacity={0.8}
             >
               <Text style={styles.tabIcon}>🏠</Text>
               <Text style={[styles.tabLabel, activeTabName === 'home' && styles.tabActiveText]}>
                 Matches
               </Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
 
-            <TouchableOpacity
-              style={styles.tabItem}
+            <AnimatedPressable
+              style={[styles.tabItem, activeTabName === 'favorites' && styles.activeTabItem]}
               onPress={() => switchTab('favorites')}
-              activeOpacity={0.8}
             >
               <Text style={styles.tabIcon}>
                 {activeTabName === 'favorites' ? '💖' : '🤍'}
@@ -146,18 +145,37 @@ export default function AppTabs() {
               <Text style={[styles.tabLabel, activeTabName === 'favorites' && styles.tabActiveText]}>
                 Favorites
               </Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
 
-            <TouchableOpacity
-              style={styles.tabItem}
+            <AnimatedPressable
+              style={[styles.tabItem, activeTabName === 'interests' && styles.activeTabItem]}
+              onPress={() => switchTab('interests')}
+            >
+              <Text style={styles.tabIcon}>💌</Text>
+              <Text style={[styles.tabLabel, activeTabName === 'interests' && styles.tabActiveText]}>
+                Interests
+              </Text>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              style={[styles.tabItem, activeTabName === 'chats' && styles.activeTabItem]}
+              onPress={() => switchTab('chats')}
+            >
+              <Text style={styles.tabIcon}>💬</Text>
+              <Text style={[styles.tabLabel, activeTabName === 'chats' && styles.tabActiveText]}>
+                Chats
+              </Text>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              style={[styles.tabItem, activeTabName === 'profile' && styles.activeTabItem]}
               onPress={() => switchTab('profile')}
-              activeOpacity={0.8}
             >
               <Text style={styles.tabIcon}>👤</Text>
               <Text style={[styles.tabLabel, activeTabName === 'profile' && styles.tabActiveText]}>
-                My Profile
+                Profile
               </Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       )}
@@ -168,45 +186,48 @@ export default function AppTabs() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: BrandColors.cream,
   },
   screenContainer: {
     flex: 1,
   },
   tabBarContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BrandColors.white,
     borderTopWidth: 1,
-    borderTopColor: '#EFEAE2',
-    paddingTop: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 4,
+    borderTopColor: BrandColors.borderLight,
+    paddingTop: 8,
+    ...Shadows.md,
   },
   tabBar: {
-    height: 46,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
+    paddingHorizontal: 8,
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
     height: '100%',
+    borderRadius: Radius.md,
+    paddingVertical: 2,
+  },
+  activeTabItem: {
+    backgroundColor: BrandColors.burgundySoft,
   },
   tabIcon: {
     fontSize: 18,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
-    color: '#998E90',
+    color: BrandColors.textMuted,
     marginTop: 2,
   },
   tabActiveText: {
-    color: '#8B1E3F',
+    color: BrandColors.burgundy,
     fontWeight: '700',
   },
 });
+

@@ -17,6 +17,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { SupportModal } from '../components/support-modal';
+import { BrandColors, Shadows, Radius } from '../constants/theme';
+import { AnimatedPressable } from '../components/ui/AnimatedPressable';
 
 const STORAGE_URL = 'https://npvmvqminzgbuxibonta.supabase.co/storage/v1/object/public/profile-images/';
 

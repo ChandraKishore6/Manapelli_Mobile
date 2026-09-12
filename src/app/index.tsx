@@ -19,6 +19,9 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getCachedSignedUrls } from '../lib/photoCache';
 import { SupportModal } from '../components/support-modal';
+import { BrandColors, Shadows, Radius } from '../constants/theme';
+import { AnimatedPressable } from '../components/ui/AnimatedPressable';
+import { CardSkeleton, ShimmerPlaceholder } from '../components/ui/ShimmerPlaceholder';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const cardWidth = SCREEN_WIDTH - 32;
@@ -244,7 +247,7 @@ export function MatchCard({
 
         {/* Dual Primary Action Buttons: Express Interest & Send Message */}
         <View style={styles.cardActionsRow}>
-          <TouchableOpacity
+          <AnimatedPressable
             style={[
               styles.cardActionBtn,
               interestStatus === 'accepted'
@@ -253,11 +256,10 @@ export function MatchCard({
                 ? styles.cardActionPending
                 : styles.cardActionInterest,
             ]}
-            onPress={(e) => {
+            onPress={(e: any) => {
               e.stopPropagation();
               if (onExpressInterest) onExpressInterest();
             }}
-            activeOpacity={0.85}
           >
             <Text
               style={[
@@ -275,18 +277,17 @@ export function MatchCard({
                 ? '⏳ Interest Sent'
                 : '💖 Express Interest'}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
 
-          <TouchableOpacity
+          <AnimatedPressable
             style={[styles.cardActionBtn, styles.cardActionChat]}
-            onPress={(e) => {
+            onPress={(e: any) => {
               e.stopPropagation();
               if (onSendMessage) onSendMessage();
             }}
-            activeOpacity={0.85}
           >
             <Text style={styles.cardActionChatText}>💬 Send Message</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </TouchableOpacity>
     </View>
@@ -564,9 +565,10 @@ export default function HomeScreen({ onViewProfile, onOpenInterests, onOpenChats
 
   if (authLoading || (loading && matches.length === 0)) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#8B1E3F" />
-      </View>
+      <SafeAreaView style={[styles.container, { padding: 16 }]} edges={['top', 'left', 'right']}>
+        <CardSkeleton />
+        <CardSkeleton />
+      </SafeAreaView>
     );
   }
 
