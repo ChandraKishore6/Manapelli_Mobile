@@ -914,7 +914,7 @@ const styles = StyleSheet.create({
     marginTop: -20,
     paddingHorizontal: 24,
     paddingTop: 28,
-    paddingBottom: 40,
+    paddingBottom: 140,
     minHeight: 500,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },

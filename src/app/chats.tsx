@@ -336,7 +336,8 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   listContent: {
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 140,
   },
   emptyContainer: {
     alignItems: 'center',

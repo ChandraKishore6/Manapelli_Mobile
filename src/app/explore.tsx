@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 140,
   },
   profileHeaderCard: {
     backgroundColor: '#FFFFFF',
