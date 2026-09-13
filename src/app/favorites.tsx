@@ -174,7 +174,7 @@ export default function FavoritesScreen({ onViewProfile }: FavoritesScreenProps)
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.logoText}>Favorites</Text>
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 140,
+    paddingBottom: 20,
   },
   emptyContainer: {
     padding: 40,

@@ -573,7 +573,7 @@ export default function HomeScreen({ onViewProfile, onOpenInterests, onOpenChats
   // Handle Pending / Rejected profiles
   if (profile && profile.status !== 'approved') {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.statusContentContainer}>
           <View style={styles.statusHeartBadge}>
             <Text style={styles.statusHeartIcon}>❦</Text>
@@ -635,7 +635,7 @@ export default function HomeScreen({ onViewProfile, onOpenInterests, onOpenChats
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -797,7 +797,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 140,
+    paddingBottom: 20,
   },
   card: {
     backgroundColor: '#FFFFFF',

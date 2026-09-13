@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 140,
+    paddingBottom: 20,
     gap: 12,
   },
   emptyContainer: {

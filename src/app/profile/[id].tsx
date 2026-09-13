@@ -464,7 +464,7 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -914,7 +914,7 @@ const styles = StyleSheet.create({
     marginTop: -20,
     paddingHorizontal: 24,
     paddingTop: 28,
-    paddingBottom: 140,
+    paddingBottom: 20,
     minHeight: 500,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },

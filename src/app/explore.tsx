@@ -349,7 +349,7 @@ export default function MyProfileScreen() {
 
   if (!profile) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>No matrimony profile found for this account.</Text>
           <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
@@ -364,7 +364,7 @@ export default function MyProfileScreen() {
   const imageUri = signedCoverUrl || null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 140,
+    paddingBottom: 20,
   },
   profileHeaderCard: {
     backgroundColor: '#FFFFFF',
