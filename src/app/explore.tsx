@@ -190,11 +190,6 @@ export default function MyProfileScreen() {
       Alert.alert('Limit Reached', 'Maximum 5 photos allowed per profile');
       return;
     }
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Please grant photo access to upload photos');
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,

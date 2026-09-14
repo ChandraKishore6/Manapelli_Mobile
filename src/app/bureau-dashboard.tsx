@@ -343,11 +343,6 @@ export default function BureauDashboard() {
       Alert.alert('Limit Reached', 'Maximum 5 photos allowed');
       return;
     }
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Please grant photo access to upload photos');
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -764,11 +759,6 @@ export default function BureauDashboard() {
               <TouchableOpacity
                 style={{ backgroundColor: '#8B1E3F', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8 }}
                 onPress={async () => {
-                  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                  if (status !== 'granted') {
-                    Alert.alert('Permission Denied', 'Please allow photo gallery access.');
-                    return;
-                  }
                   const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.8 });
                   if (!res.canceled && res.assets && res.assets.length > 0) {
                     const uri = res.assets[0].uri;

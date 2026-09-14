@@ -68,12 +68,6 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
   }, []);
 
   const handlePickLogo = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Please grant photo gallery permission to choose a logo');
-      return;
-    }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
