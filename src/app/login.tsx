@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { SupportModal } from '../components/support-modal';
 
@@ -22,6 +22,7 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ portalType, onShowWelcome, onShowRegister }: LoginScreenProps) {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -115,7 +116,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
           <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
           <View style={styles.headerContainer}>
             <View style={[styles.heartBadge, { backgroundColor: getThemeColor(), shadowColor: getThemeColor() }]}>
               <Text style={styles.heartIcon}>❦</Text>

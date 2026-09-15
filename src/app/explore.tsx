@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../hooks/useAuth';
@@ -21,6 +21,7 @@ import { SupportModal } from '../components/support-modal';
 const STORAGE_URL = 'https://npvmvqminzgbuxibonta.supabase.co/storage/v1/object/public/profile-images/';
 
 export default function MyProfileScreen() {
+  const insets = useSafeAreaInsets();
   const { profile, signOut, refreshProfile, loading: authLoading } = useAuth();
   const [bureauName, setBureauName] = useState('My Bureau');
   const [isEditing, setIsEditing] = useState(false);
@@ -371,7 +372,7 @@ export default function MyProfileScreen() {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
           {/* Profile Card Header */}
           <View style={styles.profileHeaderCard}>
             <View style={styles.avatarContainer}>

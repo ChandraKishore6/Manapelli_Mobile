@@ -21,9 +21,9 @@
     },
     "android": {
       "package": "com.manapelli.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
-        "backgroundColor": "#FAF7F2",
+        "backgroundColor": "#8B1E3F",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,

@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { MatchCard, MatchProfile } from './index';
@@ -19,6 +19,7 @@ interface FavoritesScreenProps {
 }
 
 export default function FavoritesScreen({ onViewProfile }: FavoritesScreenProps) {
+  const insets = useSafeAreaInsets();
   const { profile, loading: authLoading } = useAuth();
   const [favorites, setFavorites] = useState<MatchProfile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -185,7 +186,7 @@ export default function FavoritesScreen({ onViewProfile }: FavoritesScreenProps)
       <FlatList
         data={favorites}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8B1E3F']} />
         }

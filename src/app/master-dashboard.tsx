@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -70,6 +70,7 @@ interface SupportTicket {
 }
 
 export default function MasterDashboard() {
+  const insets = useSafeAreaInsets();
   const { signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [bureaus, setBureaus] = useState<Bureau[]>([]);
@@ -910,7 +911,7 @@ export default function MasterDashboard() {
           <ActivityIndicator size="large" color="#8B1E3F" />
         </View>
       ) : activeTab === 'add_bureau' ? (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
           <View style={styles.createCard}>
             <Text style={styles.cardTitle}>Create New Bureau Account</Text>
 
@@ -998,7 +999,7 @@ export default function MasterDashboard() {
           </View>
         </ScrollView>
       ) : activeTab === 'add_member' ? (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
           <View style={styles.createCard}>
             <Text style={styles.cardTitle}>Register Member under Bureau</Text>
 
@@ -1140,7 +1141,7 @@ export default function MasterDashboard() {
           </View>
         </ScrollView>
       ) : activeTab === 'communities' ? (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
           {/* Add Community Form */}
           <View style={styles.addCommCard}>
             <Text style={styles.cardTitle}>Add Community Caste</Text>
@@ -1200,7 +1201,7 @@ export default function MasterDashboard() {
         <FlatList
           data={profiles}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No registered members found.</Text>
@@ -1255,7 +1256,7 @@ export default function MasterDashboard() {
         <FlatList
           data={supportTickets}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No support tickets found.</Text>
@@ -1299,7 +1300,7 @@ export default function MasterDashboard() {
         <FlatList
           data={bureaus.filter((b) => b.status === (activeTab === 'pending_bureaus' ? 'pending' : b.status))}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No marriage bureaus found in this category.</Text>

@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
@@ -48,6 +48,7 @@ interface ChatDetailScreenProps {
 }
 
 export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: propOnBack, onViewProfile: propOnViewProfile }: ChatDetailScreenProps = {}) {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
   const peerProfileId = propPeerId || (params.id as string);
@@ -419,7 +420,7 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
         )}
 
         {/* Input Bar (Locked per Rule 3) */}
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
           <TextInput
             style={[styles.textInput, !canSendMessage && styles.textInputDisabled]}
             value={inputText}

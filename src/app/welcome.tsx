@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -52,6 +52,7 @@ export default function WelcomeScreen({
   onShowRegisterBureau,
   onShowRegisterProfileWithDetails,
 }: WelcomeScreenProps) {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [statsBureaus, setStatsBureaus] = useState(0);
@@ -198,7 +199,7 @@ export default function WelcomeScreen({
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]} showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.heartBadge}>

@@ -122,7 +122,7 @@ export default function AppTabs() {
 
       {/* Tab Bar Container - Only rendered when on root tab screens */}
       {isRootTab && (
-        <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom + 8, 24) }]}>
           <View style={styles.tabBar}>
             <TouchableOpacity
               style={styles.tabItem}
