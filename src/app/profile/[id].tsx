@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -53,6 +53,7 @@ interface ProfileDetailScreenProps {
 }
 
 export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: ProfileDetailScreenProps) {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const id = propId || (params.id as string);
   const router = useRouter();
@@ -483,7 +484,7 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
         {/* Images Carousel */}
         <View style={styles.carouselContainer}>
           {displayedImages.length > 0 ? (

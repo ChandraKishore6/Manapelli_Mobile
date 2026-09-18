@@ -12,7 +12,7 @@ import {
   View,
   Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -45,6 +45,7 @@ export default function RegisterProfileScreen({
   initialCommunityId = '',
   initialBureauId = '',
 }: RegisterProfileProps) {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [step, setStep] = useState(initialCommunityId ? 3 : 1);
   const [communities, setCommunities] = useState<Community[]>([]);
@@ -355,7 +356,7 @@ export default function RegisterProfileScreen({
           <Text style={styles.stepIndicator}>Step {step} of 6</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
           {/* Step 1: Caste / Community Selection */}
           {step === 1 && (
             <View style={styles.formCard}>

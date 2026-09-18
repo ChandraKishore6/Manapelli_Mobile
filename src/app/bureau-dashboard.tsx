@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -122,6 +122,7 @@ const InlinePhotoStrip = ({ profileId }: { profileId: string }) => {
 };
 
 export default function BureauDashboard() {
+  const insets = useSafeAreaInsets();
   const { role, signOut } = useAuth();
   const bureauId = role?.bureau_id;
   const [bureauName, setBureauName] = useState('My Bureau');
@@ -745,7 +746,7 @@ export default function BureauDashboard() {
       </ScrollView>
 
       {isEditingBureau ? (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
           <View style={styles.editCard}>
             <Text style={styles.label}>Bureau Logo</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -851,7 +852,7 @@ export default function BureauDashboard() {
           </View>
         </ScrollView>
       ) : activeTab === 'add_member' ? (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
           <View style={styles.editCard}>
             <Text style={styles.cardTitle}>Create New Member Profile</Text>
 
@@ -993,7 +994,7 @@ export default function BureauDashboard() {
         <FlatList
           data={filteredProfiles}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchBureauData} colors={['#8B1E3F']} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>

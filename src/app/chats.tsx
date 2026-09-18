@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../hooks/useAuth';
@@ -54,6 +54,7 @@ interface ChatsListScreenProps {
 }
 
 export default function ChatsListScreen({ onBack: propOnBack, onOpenChat: propOnOpenChat }: ChatsListScreenProps = {}) {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const handleBack = propOnBack || (() => router.back());
   const handleOpenChat = (peerId: string) => propOnOpenChat ? propOnOpenChat(peerId) : router.push(`/chat/${peerId}` as any);
@@ -221,7 +222,7 @@ export default function ChatsListScreen({ onBack: propOnBack, onOpenChat: propOn
         <FlatList
           data={conversations}
           keyExtractor={(item) => item.peerProfile.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 20, 40) }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../hooks/useAuth';
@@ -302,6 +302,7 @@ interface HomeScreenProps {
 }
 
 export default function HomeScreen({ onViewProfile, onOpenInterests, onOpenChats, onOpenViews, onOpenChat }: HomeScreenProps) {
+  const insets = useSafeAreaInsets();
   const { profile, signOut, loading: authLoading } = useAuth();
   const router = useRouter();
   const handleOpenInterests = onOpenInterests || (() => router.push('/interests' as any));
@@ -712,7 +713,7 @@ export default function HomeScreen({ onViewProfile, onOpenInterests, onOpenChats
       <FlatList
         data={matches.filter((m) => (bureauFilter === 'home' ? m.is_home_bureau : true))}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8B1E3F']} />
         }
