@@ -3,7 +3,7 @@
     "name": "ManaPelli",
     "slug": "manapelli-mobile",
     "owner": "ckreddy",
-    "version": "1.0.6",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "manapelli",
@@ -21,7 +21,7 @@
     },
     "android": {
       "package": "com.manapelli.app",
-      "versionCode": 9,
+      "versionCode": 11,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#8B1E3F",
