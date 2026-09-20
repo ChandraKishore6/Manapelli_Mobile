@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -67,6 +68,26 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
   const [isBlocked, setIsBlocked] = useState(false);
   const [isBlocker, setIsBlocker] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setIsKeyboardVisible(true);
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Fetch conversation data
   const loadConversationData = async () => {
@@ -372,7 +393,7 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
       {/* Message List */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {loading ? (
@@ -420,11 +441,12 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
         )}
 
         {/* Input Bar (Locked per Rule 3) */}
-        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
+        <View style={[styles.inputContainer, { paddingBottom: isKeyboardVisible ? 8 : Math.max(insets.bottom + 6, 16) }]}>
           <TextInput
             style={[styles.textInput, !canSendMessage && styles.textInputDisabled]}
             value={inputText}
             onChangeText={setInputText}
+            onFocus={() => setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150)}
             editable={canSendMessage}
             placeholder={
               isBlocked

@@ -22,6 +22,7 @@
     "android": {
       "package": "com.manapelli.app",
       "versionCode": 3,
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#8B1E3F",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
