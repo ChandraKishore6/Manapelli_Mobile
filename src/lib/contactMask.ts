@@ -1,7 +1,7 @@
 /**
- * Masks phone numbers showing only starting 4 digits, replacing remaining digits with X.
- * Example: "+91 9700103106" -> "+91 9700XXXXXX"
- * Example: "9700103106" -> "9700XXXXXX"
+ * Masks phone numbers showing only starting 4 digits + XXXX.
+ * Example: "+91 9700103106" -> "+91 9700XXXX"
+ * Example: "9700103106" -> "9700XXXX"
  */
 export function maskPhoneNumber(phone: string | null | undefined): string {
   if (!phone) return 'Unavailable / Managed by Bureau';
@@ -14,25 +14,22 @@ export function maskPhoneNumber(phone: string | null | undefined): string {
       const countryCode = parts[0];
       const num = parts.slice(1).join('');
       const visible = num.slice(0, 4);
-      const masked = 'X'.repeat(Math.max(num.length - 4, 4));
-      return `${countryCode} ${visible}${masked}`;
+      return `${countryCode} ${visible}XXXX`;
     } else {
       const prefix = trimmed.slice(0, 3);
       const rest = trimmed.slice(3);
       const visible = rest.slice(0, 4);
-      const masked = 'X'.repeat(Math.max(rest.length - 4, 4));
-      return `${prefix} ${visible}${masked}`;
+      return `${prefix} ${visible}XXXX`;
     }
   }
 
   const visible = trimmed.slice(0, 4);
-  const masked = 'X'.repeat(Math.max(trimmed.length - 4, 4));
-  return `${visible}${masked}`;
+  return `${visible}XXXX`;
 }
 
 /**
- * Masks email addresses showing starting 4 characters of username, replacing remainder with X.
- * Example: "madhukarreddy106@gmail.com" -> "madhXXXX@gmail.com"
+ * Masks email addresses showing starting 4 characters + XXXX + domain.
+ * Example: "chandrareddy106@gmail.com" -> "chanXXXX@gmail.com"
  */
 export function maskEmail(email: string | null | undefined): string {
   if (!email) return 'Unavailable / Managed by Bureau';
@@ -45,7 +42,6 @@ export function maskEmail(email: string | null | undefined): string {
 
   const visibleLen = Math.min(userPart.length, 4);
   const visibleUser = userPart.slice(0, visibleLen);
-  const maskedUser = 'X'.repeat(Math.max(userPart.length - visibleLen, 4));
 
-  return `${visibleUser}${maskedUser}${domainPart}`;
+  return `${visibleUser}XXXX${domainPart}`;
 }
