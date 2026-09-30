@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getCachedSignedUrls } from '../lib/photoCache';
+import { triggerInterestAcceptedNotification } from '../lib/notifications';
 
 interface ProfileInfo {
   id: string;
@@ -165,6 +166,17 @@ export default function InterestsScreen({ onBack: propOnBack, onOpenChat: propOn
         .eq('id', interestId);
 
       if (error) throw error;
+
+      if (action === 'accepted') {
+        const targetItem = receivedList.find((i) => i.id === interestId);
+        if (targetItem?.profile?.id && profile?.id) {
+          triggerInterestAcceptedNotification(
+            targetItem.profile.id,
+            profile.full_name || 'Someone',
+            profile.id
+          );
+        }
+      }
 
       Alert.alert(
         action === 'accepted' ? 'Interest Accepted 🎉' : 'Interest Declined',

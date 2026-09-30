@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { registerForPushNotificationsAsync } from '../lib/notifications';
 
 export interface UserProfile {
   id: string;
@@ -80,7 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (profileError) {
         console.error('Error fetching profile:', profileError.message);
       } else if (profilesData && profilesData.length > 0) {
-        setProfile(profilesData[0] as UserProfile);
+        const prof = profilesData[0] as UserProfile;
+        setProfile(prof);
+        registerForPushNotificationsAsync(prof.id);
       }
     } catch (err) {
       console.error('Failed to fetch user supplementary data:', err);

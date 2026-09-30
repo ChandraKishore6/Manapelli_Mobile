@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getCachedSignedUrls } from '../lib/photoCache';
+import { triggerInterestNotification } from '../lib/notifications';
 
 interface ViewerProfile {
   id: string;
@@ -168,6 +169,7 @@ export default function ProfileViewsScreen({ onBack: propOnBack, onOpenChat: pro
 
       if (error) throw error;
       Alert.alert('Success 🎉', 'Interest expressed successfully!');
+      triggerInterestNotification(targetProfileId, profile.full_name || 'Someone', profile.id);
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Could not express interest.');
     } finally {

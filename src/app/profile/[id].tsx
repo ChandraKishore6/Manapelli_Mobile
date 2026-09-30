@@ -19,6 +19,7 @@ import { supabase } from '../../lib/supabase';
 import { getCachedSignedUrl, getCachedSignedUrls } from '../../lib/photoCache';
 import { ProfileGalleryModal } from '../../components/profile-gallery-modal';
 import { maskPhoneNumber, maskEmail } from '../../lib/contactMask';
+import { triggerInterestNotification, triggerInterestAcceptedNotification } from '../../lib/notifications';
 
 interface ProfileDetail {
   id: string;
@@ -167,7 +168,7 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
     try {
       const { data: meUser } = await supabase.auth.getUser();
       if (!meUser?.user) return;
-      const { data: myProf } = await supabase.from('profiles').select('id').eq('user_id', meUser.user.id).maybeSingle();
+      const { data: myProf } = await supabase.from('profiles').select('id, full_name').eq('user_id', meUser.user.id).maybeSingle();
       if (!myProf?.id) return;
 
       if (interestStatus === 'pending' && !isInterestSender && interestId) {
@@ -180,6 +181,7 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
         if (error) throw error;
         setInterestStatus('accepted');
         Alert.alert('Interest Accepted 🎉', 'You can now start chatting with this candidate!');
+        triggerInterestAcceptedNotification(id as string, (myProf as any)?.full_name || 'Someone', myProf.id);
       } else if (!interestStatus) {
         // Send interest
         const { data: inserted, error } = await supabase
@@ -197,6 +199,7 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
         setIsInterestSender(true);
         setInterestId(inserted.id);
         Alert.alert('Success 🎉', 'Interest expressed successfully!');
+        triggerInterestNotification(id as string, (myProf as any)?.full_name || 'Someone', myProf.id);
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Could not express interest.');

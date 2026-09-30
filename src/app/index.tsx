@@ -19,6 +19,7 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getCachedSignedUrls } from '../lib/photoCache';
 import { SupportModal } from '../components/support-modal';
+import { triggerInterestNotification } from '../lib/notifications';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const cardWidth = SCREEN_WIDTH - 32;
@@ -474,6 +475,7 @@ export default function HomeScreen({ onViewProfile, onOpenInterests, onOpenChats
 
       if (error) throw error;
       Alert.alert('Success 🎉', 'Interest expressed successfully!');
+      triggerInterestNotification(targetProfileId, profile.full_name || 'Someone', profile.id);
       setInterestsMap((prev) => ({ ...prev, [targetProfileId]: 'pending' }));
       fetchSocialSummary();
     } catch (err: any) {

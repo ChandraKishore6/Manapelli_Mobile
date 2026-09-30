@@ -19,6 +19,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getCachedSignedUrl } from '../../lib/photoCache';
 import { BlockReportModal } from '../../components/BlockReportModal';
+import { triggerChatNotification, triggerInterestNotification, triggerInterestAcceptedNotification } from '../../lib/notifications';
 
 interface Message {
   id: string;
@@ -253,6 +254,9 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
 
       setInputText('');
 
+      // Send push notification to recipient
+      triggerChatNotification(peerProfileId, profile.full_name || 'Candidate', text, profile.id);
+
       // If replying to peer's initial message, auto-accept interest to permanently unlock chat
       if (peerSentCount > 0 && interestStatus !== 'accepted') {
         const { data: existingInt } = await supabase
@@ -312,6 +316,7 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
       }
 
       setInterestStatus('accepted');
+      triggerInterestAcceptedNotification(peerProfileId, profile.full_name || 'Candidate', profile.id);
       Alert.alert('Success 🎉', 'Conversation accepted! Unlimited chat is now unlocked.');
       loadConversationData();
     } catch (err: any) {
