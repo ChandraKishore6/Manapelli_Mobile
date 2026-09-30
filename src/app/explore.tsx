@@ -377,7 +377,7 @@ export default function MyProfileScreen() {
           <View style={styles.profileHeaderCard}>
             <View style={styles.avatarContainer}>
               {imageUri ? (
-                <Image source={{ uri: imageUri }} style={styles.avatar} contentFit="cover" />
+                <Image source={{ uri: imageUri }} style={styles.avatar} contentFit="cover" contentPosition="top center" />
               ) : (
                 <View style={[styles.avatar, styles.placeholderAvatar]}>
                   <Text style={styles.placeholderIcon}>❦</Text>

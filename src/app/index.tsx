@@ -100,7 +100,7 @@ export function MatchCard({
       {/* Photo Carousel Container */}
       <View style={styles.cardImageContainer}>
         {displayedImages.length > 0 ? (
-          <View style={{ position: 'relative', width: '100%', height: 220 }}>
+          <View style={{ position: 'relative', width: '100%', height: 280 }}>
             <ScrollView
               ref={scrollViewRef}
               horizontal
@@ -120,12 +120,13 @@ export function MatchCard({
                   key={i}
                   activeOpacity={0.92}
                   onPress={onPress}
-                  style={{ width: cardWidth, height: 220 }}
+                  style={{ width: cardWidth, height: 280 }}
                 >
                   <Image
                     source={{ uri: url }}
                     style={styles.cardImage}
                     contentFit="cover"
+                    contentPosition="top center"
                   />
                 </TouchableOpacity>
               ))}
@@ -814,7 +815,7 @@ const styles = StyleSheet.create({
     borderColor: '#EFEAE2',
   },
   cardImageContainer: {
-    height: 220,
+    height: 280,
     position: 'relative',
     backgroundColor: '#EFEAE2',
   },

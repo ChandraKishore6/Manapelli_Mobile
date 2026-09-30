@@ -489,7 +489,7 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
         {/* Images Carousel */}
         <View style={styles.carouselContainer}>
           {displayedImages.length > 0 ? (
-            <View style={{ position: 'relative', width: '100%', height: 350 }}>
+            <View style={{ position: 'relative', width: '100%', height: 420 }}>
               <ScrollView
                 ref={scrollViewRef}
                 horizontal
@@ -510,6 +510,7 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
                     source={{ uri: img.signed_url || '' }}
                     style={styles.carouselImage}
                     contentFit="cover"
+                    contentPosition="top center"
                   />
                 ))}
               </ScrollView>
@@ -828,7 +829,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   carouselContainer: {
-    height: 350,
+    height: 420,
     backgroundColor: '#EFEAE2',
     position: 'relative',
   },
