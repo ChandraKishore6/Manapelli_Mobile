@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase';
 import { getCachedSignedUrl } from '../../lib/photoCache';
 import { BlockReportModal } from '../../components/BlockReportModal';
 import { triggerChatNotification, triggerInterestNotification, triggerInterestAcceptedNotification } from '../../lib/notifications';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Message {
   id: string;
@@ -29,6 +30,7 @@ interface Message {
   receiver_profile_id: string;
   message: string;
   is_read: boolean;
+  is_delivered?: boolean;
   created_at: string;
   isMine: boolean;
 }
@@ -163,13 +165,12 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
         }));
         setMessages(formatted);
 
-        // Mark unread messages from this peer as read
+        // Mark unread / undelivered messages from this peer as read & delivered
         await supabase
           .from('messages')
-          .update({ is_read: true })
+          .update({ is_read: true, is_delivered: true })
           .eq('sender_profile_id', peerProfileId)
-          .eq('receiver_user_id', user.id)
-          .eq('is_read', false);
+          .eq('receiver_user_id', user.id);
       }
     } catch (err) {
       console.error(err);
@@ -246,6 +247,7 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
           receiver_profile_id: peerProfileId,
           message: text,
           is_read: false,
+          is_delivered: false,
         })
         .select()
         .single();
@@ -434,12 +436,23 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
                     {item.message}
                   </Text>
                 </View>
-                <Text style={styles.msgTime}>
-                  {new Date(item.created_at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
+                <View style={styles.msgFooter}>
+                  <Text style={styles.msgTime}>
+                    {new Date(item.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                  {item.isMine && (
+                    item.is_read ? (
+                      <Ionicons name="checkmark-done" size={15} color="#38BDF8" style={{ marginLeft: 3 }} />
+                    ) : item.is_delivered ? (
+                      <Ionicons name="checkmark-done" size={15} color="#94A3B8" style={{ marginLeft: 3 }} />
+                    ) : (
+                      <Ionicons name="checkmark" size={13} color="#94A3B8" style={{ marginLeft: 3 }} />
+                    )
+                  )}
+                </View>
               </View>
             )}
           />
@@ -681,11 +694,15 @@ const styles = StyleSheet.create({
   msgPeerText: {
     color: '#0f172a',
   },
+  msgFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    marginHorizontal: 4,
+  },
   msgTime: {
     fontSize: 10,
     color: '#94a3b8',
-    marginTop: 2,
-    marginHorizontal: 4,
   },
   inputContainer: {
     flexDirection: 'row',
