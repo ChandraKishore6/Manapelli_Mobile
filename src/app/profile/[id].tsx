@@ -18,6 +18,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getCachedSignedUrl, getCachedSignedUrls } from '../../lib/photoCache';
 import { ProfileGalleryModal } from '../../components/profile-gallery-modal';
+import { maskPhoneNumber, maskEmail } from '../../lib/contactMask';
 
 interface ProfileDetail {
   id: string;
@@ -694,13 +695,13 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
               <View style={styles.contactRow}>
                 <Text style={styles.contactRowLabel}>Phone:</Text>
                 <Text style={styles.contactRowValue}>
-                  {profile.phone || 'Unavailable / Managed by Bureau'}
+                  {maskPhoneNumber(profile.phone)}
                 </Text>
               </View>
               <View style={styles.contactRow}>
                 <Text style={styles.contactRowLabel}>Email:</Text>
                 <Text style={styles.contactRowValue}>
-                  {profile.email || 'Unavailable / Managed by Bureau'}
+                  {maskEmail(profile.email)}
                 </Text>
               </View>
             </View>
