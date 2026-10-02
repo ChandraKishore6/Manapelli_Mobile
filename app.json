@@ -3,25 +3,31 @@
     "name": "ManaPelli",
     "slug": "manapelli-mobile",
     "owner": "ckreddy",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "manapelli",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.manapelli.app",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "supportsTablet": false,
       "icon": "./assets/images/icon.png",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "ManaPelli needs access to your photos to upload profile pictures.",
-        "NSCameraUsageDescription": "ManaPelli needs camera access to take profile pictures."
+        "NSCameraUsageDescription": "ManaPelli needs camera access to take profile pictures.",
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      },
+      "entitlements": {
+        "aps-environment": "production"
       },
       "associatedDomains": ["applinks:manapelli.in"]
     },
     "android": {
       "package": "com.manapelli.app",
-      "versionCode": 11,
+      "versionCode": 12,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#8B1E3F",
@@ -83,11 +89,18 @@
           "microphonePermission": false
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#8B1E3F"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "extra": {
       "router": {},

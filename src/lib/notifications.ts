@@ -3,21 +3,29 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 
-// Configure notification behavior when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Configure notification behavior when app is in foreground (wrapped safely to prevent module-load crashes)
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch (handlerErr) {
+  console.warn('Could not set notification handler:', handlerErr);
+}
 
 /**
  * Registers device for push notifications and saves token to user profile.
  */
 export async function registerForPushNotificationsAsync(profileId?: string): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return null;
+  }
+
   if (!Device.isDevice) {
     console.log('Must use physical device for Push Notifications');
     return null;
@@ -39,10 +47,15 @@ export async function registerForPushNotificationsAsync(profileId?: string): Pro
       return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: 'a07408f4-ef29-4d9f-8986-3b6c6ddfed33',
-    });
-    token = tokenData.data;
+    try {
+      const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: 'a07408f4-ef29-4d9f-8986-3b6c6ddfed33',
+      });
+      token = tokenData.data;
+    } catch (tokenErr) {
+      console.warn('Could not obtain Expo push token (check APNs credentials / entitlements):', tokenErr);
+      return null;
+    }
 
     // Set Android notification channel
     if (Platform.OS === 'android') {
@@ -62,7 +75,7 @@ export async function registerForPushNotificationsAsync(profileId?: string): Pro
         .eq('id', profileId);
     }
   } catch (error) {
-    console.error('Error registering for push notifications:', error);
+    console.warn('Error in registerForPushNotificationsAsync:', error);
   }
 
   return token;

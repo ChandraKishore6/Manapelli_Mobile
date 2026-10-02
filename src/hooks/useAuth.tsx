@@ -83,7 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (profilesData && profilesData.length > 0) {
         const prof = profilesData[0] as UserProfile;
         setProfile(prof);
-        registerForPushNotificationsAsync(prof.id);
+        registerForPushNotificationsAsync(prof.id).catch((err) => {
+          console.warn('Push notification registration skipped/failed:', err);
+        });
       }
     } catch (err) {
       console.error('Failed to fetch user supplementary data:', err);

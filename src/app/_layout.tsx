@@ -12,7 +12,7 @@ import RegisterBureauScreen from './register-bureau';
 import BureauDashboard from './bureau-dashboard';
 import MasterDashboard from './master-dashboard';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AppContent() {
   const { session, loading, role } = useAuth();
