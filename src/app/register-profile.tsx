@@ -1069,6 +1069,8 @@ export default function RegisterProfileScreen({
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
       {/* Request Community Modal */}
       <Modal visible={showRequestCommModal} animationType="slide" transparent onRequestClose={() => setShowRequestCommModal(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
