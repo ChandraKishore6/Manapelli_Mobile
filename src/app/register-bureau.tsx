@@ -44,6 +44,46 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
   const [eulaAccepted, setEulaAccepted] = useState(false);
   const [servesAllCommunities, setServesAllCommunities] = useState(false);
 
+  // Community Request States
+  const [showRequestCommModal, setShowRequestCommModal] = useState(false);
+  const [reqCommName, setReqCommName] = useState('');
+  const [reqContact, setReqContact] = useState('');
+  const [reqNotes, setReqNotes] = useState('');
+  const [submittingReq, setSubmittingReq] = useState(false);
+
+  const handleSubmitCommunityRequest = async () => {
+    if (!reqCommName.trim()) {
+      Alert.alert('Required', 'Please enter a community name');
+      return;
+    }
+    setSubmittingReq(true);
+    try {
+      const { error } = await supabase.from('community_requests').insert({
+        community_name: reqCommName.trim(),
+        contact_email: reqContact.includes('@') ? reqContact.trim() : null,
+        contact_phone: !reqContact.includes('@') ? reqContact.trim() : null,
+        notes: reqNotes.trim() || null,
+        status: 'pending',
+      });
+      if (error) {
+        Alert.alert('Submission Error', error.message);
+      } else {
+        Alert.alert(
+          'Request Submitted',
+          `Request for "${reqCommName.trim()}" submitted! Admin will review and add it.`
+        );
+        setReqCommName('');
+        setReqContact('');
+        setReqNotes('');
+        setShowRequestCommModal(false);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to submit request');
+    } finally {
+      setSubmittingReq(false);
+    }
+  };
+
   useEffect(() => {
     const fetchCommunities = async () => {
       try {
@@ -358,6 +398,18 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
               </View>
             )}
 
+            <View style={styles.requestCommContainer}>
+              <TouchableOpacity
+                style={styles.requestCommBtn}
+                onPress={() => setShowRequestCommModal(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.requestCommBtnText}>
+                  ❓ Not what you’re looking for? Request admin to add your community
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <Text style={[styles.label, { marginTop: 20 }]}>About our Bureau</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
@@ -410,6 +462,74 @@ export default function RegisterBureauScreen({ onShowWelcome }: RegisterBureauPr
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Request Community Modal */}
+      <Modal visible={showRequestCommModal} animationType="slide" transparent onRequestClose={() => setShowRequestCommModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#2C1B1F' }}>Request a New Community</Text>
+              <TouchableOpacity onPress={() => setShowRequestCommModal(false)}>
+                <Text style={{ fontSize: 18, color: '#999', padding: 4 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
+                Can't find your community in our list? Request our admin team to add it and make it available for registration and matching.
+              </Text>
+
+              <Text style={styles.label}>Community Name *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Gowda / Naidu / Lingayat"
+                placeholderTextColor="#999"
+                value={reqCommName}
+                onChangeText={setReqCommName}
+              />
+
+              <Text style={styles.label}>Your Mobile Phone or Email (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 9876543210 or name@gmail.com"
+                placeholderTextColor="#999"
+                value={reqContact}
+                onChangeText={setReqContact}
+              />
+
+              <Text style={styles.label}>Additional Notes / Region (Optional)</Text>
+              <TextInput
+                style={[styles.input, { height: 75, paddingTop: 10, textAlignVertical: 'top' }]}
+                placeholder="e.g. Popular in Telangana / Andhra Pradesh"
+                placeholderTextColor="#999"
+                value={reqNotes}
+                onChangeText={setReqNotes}
+                multiline
+                numberOfLines={3}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16, marginBottom: 20 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, height: 46, borderRadius: 12, borderWidth: 1, borderColor: '#E6E0D5', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}
+                  onPress={() => setShowRequestCommModal(false)}
+                >
+                  <Text style={{ color: '#2C1B1F', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]}
+                  disabled={submittingReq}
+                  onPress={handleSubmitCommunityRequest}
+                >
+                  {submittingReq ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Submit Request</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -668,5 +788,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#706064',
     lineHeight: 18,
+  },
+  requestCommContainer: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#EFEAE2',
+    alignItems: 'center',
+  },
+  requestCommBtn: {
+    backgroundColor: '#FFF0F3',
+    borderWidth: 1,
+    borderColor: '#F8C8D2',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  requestCommBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B1E3F',
+    textAlign: 'center',
   },
 });
