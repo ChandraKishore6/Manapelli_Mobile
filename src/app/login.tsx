@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -28,6 +29,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [supportVisible, setSupportVisible] = useState(false);
+  const [forgotVisible, setForgotVisible] = useState(false);
 
   const getThemeColor = () => {
     if (portalType === 'bureau_admin') return '#1B365D';
@@ -140,9 +142,14 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
               autoComplete="email"
             />
 
-            <Text style={styles.label}>
-              {portalType === 'user' ? 'Issued Password' : 'Password'}
-            </Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>
+                {portalType === 'user' ? 'Issued Password' : 'Password'}
+              </Text>
+              <TouchableOpacity onPress={() => setForgotVisible(true)}>
+                <Text style={[styles.forgotBtnText, { color: getThemeColor() }]}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.passwordInputContainer}>
               <TextInput
                 style={styles.passwordInput}
@@ -200,6 +207,13 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
         visible={supportVisible}
         onClose={() => setSupportVisible(false)}
         prefilledEmail={email}
+      />
+
+      <ForgotPasswordModal
+        visible={forgotVisible}
+        onClose={() => setForgotVisible(false)}
+        initialEmail={email}
+        themeColor={getThemeColor()}
       />
     </SafeAreaView>
   );
@@ -388,5 +402,215 @@ const styles = StyleSheet.create({
   },
   eyeText: {
     fontSize: 20,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  forgotBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+});
+
+function ForgotPasswordModal({
+  visible,
+  onClose,
+  initialEmail = '',
+  themeColor = '#8B1E3F',
+}: {
+  visible: boolean;
+  onClose: () => void;
+  initialEmail?: string;
+  themeColor?: string;
+}) {
+  const [resetEmail, setResetEmail] = useState(initialEmail);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (visible && initialEmail) {
+      setResetEmail(initialEmail);
+    }
+  }, [visible, initialEmail]);
+
+  const handleSendCredentials = async () => {
+    const cleanEmail = resetEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      Alert.alert('Invalid Email', 'Please enter your registered email address.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      // 1. Check if email exists in profiles table
+      const { data: profileData, error: profileErr } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .ilike('email', cleanEmail)
+        .limit(1)
+        .maybeSingle();
+
+      if (profileErr) {
+        console.error('Error querying profiles for email:', profileErr.message);
+      }
+
+      if (!profileData) {
+        Alert.alert(
+          'Email Not Registered',
+          'This email is not registered in our database. Please check your email address or submit a new profile.'
+        );
+        setBusy(false);
+        return;
+      }
+
+      // 2. Trigger password reset link / email credentials via Supabase
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(cleanEmail);
+      if (resetErr) {
+        Alert.alert('Error', resetErr.message || 'Could not send reset credentials.');
+      } else {
+        Alert.alert(
+          'Login Credentials Sent 📩',
+          'Password reset instructions have been sent to your email inbox!'
+        );
+        onClose();
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to send credentials. Please check your connection.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+      <View style={modalStyles.overlay}>
+        <View style={modalStyles.container}>
+          <View style={modalStyles.header}>
+            <Text style={modalStyles.title}>🔑 Forgot Password?</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={modalStyles.closeIcon}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={modalStyles.description}>
+            Enter your registered email address below. If your email is registered in our database, we will send your login credentials / reset link to your email inbox.
+          </Text>
+          <Text style={modalStyles.label}>Registered Email Address *</Text>
+          <TextInput
+            style={modalStyles.input}
+            placeholder="e.g. name@example.com"
+            placeholderTextColor="#999"
+            value={resetEmail}
+            onChangeText={setResetEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <View style={modalStyles.btnRow}>
+            <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose} disabled={busy}>
+              <Text style={modalStyles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[modalStyles.submitBtn, { backgroundColor: themeColor }]}
+              onPress={handleSendCredentials}
+              disabled={busy}
+            >
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={modalStyles.submitBtnText}>Send Credentials</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  container: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2C1B1F',
+  },
+  closeIcon: {
+    fontSize: 18,
+    color: '#999',
+    padding: 4,
+  },
+  description: {
+    fontSize: 13,
+    color: '#706064',
+    lineHeight: 19,
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#706064',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  input: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#E6E0D5',
+    borderRadius: 12,
+    backgroundColor: '#FCFAF6',
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: '#2C1B1F',
+    marginBottom: 20,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E6E0D5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#706064',
+  },
+  submitBtn: {
+    flex: 1.4,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

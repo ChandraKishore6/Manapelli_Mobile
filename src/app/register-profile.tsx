@@ -146,8 +146,16 @@ export default function RegisterProfileScreen({
       return;
     }
     if (step === 3) {
-      if (!fullName || !dob || !email || !phone || !password) {
+      if (!fullName.trim() || !dob || !phone.trim()) {
         Alert.alert('Error', 'Please fill in all required personal details');
+        return;
+      }
+      if (!email.trim() || !email.includes('@')) {
+        Alert.alert('Email Required', 'Please enter a valid email address. We will send your login credentials to this email address.');
+        return;
+      }
+      if (!password || password.length < 6) {
+        Alert.alert('Password Requirement', 'Please choose a login password of at least 6 characters.');
         return;
       }
     }
@@ -586,6 +594,7 @@ export default function RegisterProfileScreen({
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
+              <Text style={styles.inputNoteText}>We will send your login credentials to this email address.</Text>
 
               <Text style={styles.label}>Contact Phone Number *</Text>
               <TextInput
@@ -601,7 +610,7 @@ export default function RegisterProfileScreen({
               <View style={styles.passwordInputContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Choose a password"
+                  placeholder="Min 6 characters"
                   placeholderTextColor="#999"
                   value={password}
                   onChangeText={setPassword}
@@ -939,6 +948,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  inputNoteText: {
+    fontSize: 11,
+    color: '#998E90',
+    marginTop: 4,
+    marginBottom: 8,
+    fontWeight: '500',
   },
   input: {
     height: 50,
