@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { HEIGHT_OPTIONS, POPULAR_CURRENCIES } from '../lib/formatters';
 
 interface Community {
   id: string;
@@ -73,12 +74,38 @@ export default function RegisterProfileScreen({
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [height, setHeight] = useState('');
+  const [showHeightModal, setShowHeightModal] = useState(false);
   const [nativePlace, setNativePlace] = useState('');
   const [currentPlace, setCurrentPlace] = useState('');
   const [occupation, setOccupation] = useState('');
   const [salary, setSalary] = useState('');
+  const [salaryCurrency, setSalaryCurrency] = useState('INR');
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [fatherName, setFatherName] = useState('');
+  const [fatherOccupation, setFatherOccupation] = useState('');
+  const [motherName, setMotherName] = useState('');
+  const [motherOccupation, setMotherOccupation] = useState('');
+  const [siblingsCount, setSiblingsCount] = useState('0');
+  const [siblings, setSiblings] = useState<Array<{ name: string; occupation: string }>>([]);
   const [partnerPreferences, setPartnerPreferences] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+
+  const handleSiblingsCountChange = (countStr: string) => {
+    setSiblingsCount(countStr);
+    const count = Math.max(0, parseInt(countStr, 10) || 0);
+    setSiblings((prev) => {
+      const next = [...prev];
+      if (next.length < count) {
+        for (let i = next.length; i < count; i++) {
+          next.push({ name: '', occupation: '' });
+        }
+      } else {
+        next.splice(count);
+      }
+      return next;
+    });
+  };
 
   // Fetch Communities on mount
   useEffect(() => {
@@ -308,6 +335,14 @@ export default function RegisterProfileScreen({
           p_partner_preferences: partnerPreferences || null,
           p_image_paths: uploadedPaths,
           p_allow_cross_bureau: allowCrossBureau,
+          p_height: height || null,
+          p_salary_currency: salaryCurrency || 'INR',
+          p_father_name: fatherName || null,
+          p_father_occupation: fatherOccupation || null,
+          p_mother_name: motherName || null,
+          p_mother_occupation: motherOccupation || null,
+          p_siblings_count: Number(siblingsCount || 0),
+          p_siblings: siblings.filter((s) => s.name.trim() || s.occupation.trim()),
         }
       );
 
@@ -638,6 +673,16 @@ export default function RegisterProfileScreen({
             <View style={styles.formCard}>
               <Text style={styles.sectionTitle}>Biodata Details</Text>
 
+              <Text style={styles.label}>Height (Optional)</Text>
+              <TouchableOpacity
+                style={styles.pickerToggle}
+                onPress={() => setShowHeightModal(true)}
+              >
+                <Text style={[styles.pickerToggleText, !height && { color: '#999' }]}>
+                  {height ? height : 'Select Height'}
+                </Text>
+              </TouchableOpacity>
+
               <Text style={styles.label}>Current City / Location *</Text>
               <TextInput
                 style={styles.input}
@@ -665,15 +710,119 @@ export default function RegisterProfileScreen({
                 onChangeText={setOccupation}
               />
 
-              <Text style={styles.label}>Annual Income (INR / yr - Optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 1500000"
-                placeholderTextColor="#999"
-                value={salary}
-                onChangeText={setSalary}
-                keyboardType="numeric"
-              />
+              <Text style={styles.label}>Annual Salary & Currency (Optional)</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+                <TouchableOpacity
+                  style={[styles.pickerToggle, { width: 100, marginBottom: 0 }]}
+                  onPress={() => setShowCurrencyModal(true)}
+                >
+                  <Text style={styles.pickerToggleText}>{salaryCurrency}</Text>
+                </TouchableOpacity>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  placeholder="e.g. 1500000"
+                  placeholderTextColor="#999"
+                  value={salary}
+                  onChangeText={setSalary}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              {/* Family Details Sub-section */}
+              <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#EFEAE2' }}>
+                <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>Family Details</Text>
+                
+                <Text style={styles.label}>Father's Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Father's full name"
+                  placeholderTextColor="#999"
+                  value={fatherName}
+                  onChangeText={setFatherName}
+                />
+
+                <Text style={styles.label}>Father's Occupation</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Business / Service / Retired"
+                  placeholderTextColor="#999"
+                  value={fatherOccupation}
+                  onChangeText={setFatherOccupation}
+                />
+
+                <Text style={styles.label}>Mother's Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Mother's full name"
+                  placeholderTextColor="#999"
+                  value={motherName}
+                  onChangeText={setMotherName}
+                />
+
+                <Text style={styles.label}>Mother's Occupation</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Homemaker / Teacher / Business"
+                  placeholderTextColor="#999"
+                  value={motherOccupation}
+                  onChangeText={setMotherOccupation}
+                />
+
+                <Text style={styles.label}>Number of Siblings</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                  {['0', '1', '2', '3', '4', '5'].map((num) => (
+                    <TouchableOpacity
+                      key={num}
+                      style={[
+                        styles.commChip,
+                        siblingsCount === num && styles.commChipActive,
+                        { paddingHorizontal: 14, paddingVertical: 8 },
+                      ]}
+                      onPress={() => handleSiblingsCountChange(num)}
+                    >
+                      <Text style={[styles.commChipText, siblingsCount === num && styles.commChipTextActive]}>
+                        {num === '0' ? 'None' : num}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {siblings.map((sib, idx) => (
+                  <View key={idx} style={{ backgroundColor: '#FCFAF6', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#EFEAE2', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#8B1E3F', marginBottom: 8, textTransform: 'uppercase' }}>
+                      Sibling {idx + 1}
+                    </Text>
+                    <Text style={styles.label}>Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Sibling name"
+                      placeholderTextColor="#999"
+                      value={sib.name}
+                      onChangeText={(val) => {
+                        setSiblings((prev) => {
+                          const next = [...prev];
+                          next[idx] = { ...next[idx], name: val };
+                          return next;
+                        });
+                      }}
+                    />
+                    <Text style={styles.label}>Occupation</Text>
+                    <TextInput
+                      style={[styles.input, { marginBottom: 0 }]}
+                      placeholder="Sibling occupation"
+                      placeholderTextColor="#999"
+                      value={sib.occupation}
+                      onChangeText={(val) => {
+                        setSiblings((prev) => {
+                          const next = [...prev];
+                          next[idx] = { ...next[idx], occupation: val };
+                          return next;
+                        });
+                      }}
+                    />
+                  </View>
+                ))}
+              </View>
 
               <View style={styles.btnRow}>
                 <TouchableOpacity style={styles.secondaryBtn} onPress={handlePrevStep}>
@@ -797,6 +946,64 @@ export default function RegisterProfileScreen({
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Height Selector Modal */}
+      <Modal visible={showHeightModal} animationType="slide" transparent onRequestClose={() => setShowHeightModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '60%', padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#2C1B1F' }}>Select Height</Text>
+              <TouchableOpacity onPress={() => setShowHeightModal(false)}>
+                <Text style={{ fontSize: 18, color: '#999', padding: 4 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              <TouchableOpacity
+                style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EFEAE2' }}
+                onPress={() => { setHeight(''); setShowHeightModal(false); }}
+              >
+                <Text style={{ fontSize: 15, color: '#999' }}>None / Not Specified</Text>
+              </TouchableOpacity>
+              {HEIGHT_OPTIONS.map((h) => (
+                <TouchableOpacity
+                  key={h.value}
+                  style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EFEAE2', flexDirection: 'row', justifyContent: 'space-between' }}
+                  onPress={() => { setHeight(h.value); setShowHeightModal(false); }}
+                >
+                  <Text style={{ fontSize: 15, color: '#2C1B1F', fontWeight: height === h.value ? '700' : '400' }}>{h.label}</Text>
+                  {height === h.value && <Text style={{ color: '#8B1E3F', fontWeight: 'bold' }}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Currency Selector Modal */}
+      <Modal visible={showCurrencyModal} animationType="slide" transparent onRequestClose={() => setShowCurrencyModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '60%', padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#2C1B1F' }}>Select Salary Currency</Text>
+              <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
+                <Text style={{ fontSize: 18, color: '#999', padding: 4 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {POPULAR_CURRENCIES.map((c) => (
+                <TouchableOpacity
+                  key={c.code}
+                  style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EFEAE2', flexDirection: 'row', justifyContent: 'space-between' }}
+                  onPress={() => { setSalaryCurrency(c.code); setShowCurrencyModal(false); }}
+                >
+                  <Text style={{ fontSize: 15, color: '#2C1B1F', fontWeight: salaryCurrency === c.code ? '700' : '400' }}>{c.label}</Text>
+                  {salaryCurrency === c.code && <Text style={{ color: '#8B1E3F', fontWeight: 'bold' }}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -966,6 +1173,20 @@ const styles = StyleSheet.create({
     color: '#2C1B1F',
     backgroundColor: '#FCFAF6',
     marginBottom: 20,
+  },
+  pickerToggle: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#E6E0D5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FCFAF6',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  pickerToggleText: {
+    fontSize: 15,
+    color: '#2C1B1F',
   },
   textArea: {
     height: 120,

@@ -20,6 +20,7 @@ import { supabase } from '../lib/supabase';
 import { getCachedSignedUrls } from '../lib/photoCache';
 import { SupportModal } from '../components/support-modal';
 import { triggerInterestNotification } from '../lib/notifications';
+import { formatSalary } from '../lib/formatters';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const cardWidth = SCREEN_WIDTH - 32;
@@ -29,6 +30,7 @@ export interface MatchProfile {
   full_name: string;
   dob: string;
   gender: string;
+  height?: string | null;
   occupation: string | null;
   current_place: string | null;
   native_place: string | null;
@@ -505,6 +507,7 @@ export default function HomeScreen({ onViewProfile, onOpenInterests, onOpenChats
         full_name: m.full_name || 'Candidate',
         dob: m.dob,
         gender: m.gender,
+        height: m.height || null,
         occupation: m.occupation,
         current_place: m.current_place,
         native_place: m.native_place,
@@ -554,16 +557,6 @@ export default function HomeScreen({ onViewProfile, onOpenInterests, onOpenChats
       age--;
     }
     return age;
-  };
-
-  const formatSalary = (salary: number | null, currency: string) => {
-    if (!salary) return 'Not Specified';
-    const amount = Number(salary);
-    if (amount >= 100000) {
-      const lakhs = amount / 100000;
-      return `${currency} ${lakhs.toFixed(1)} Lakhs/yr`;
-    }
-    return `${currency} ${amount.toLocaleString()}/yr`;
   };
 
   if (authLoading || (loading && matches.length === 0)) {

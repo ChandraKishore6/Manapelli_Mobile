@@ -28,6 +28,7 @@ interface Profile {
   full_name: string;
   dob: string;
   gender: string;
+  height?: string | null;
   email: string | null;
   phone: string | null;
   occupation: string | null;
@@ -37,6 +38,12 @@ interface Profile {
   native_place: string | null;
   community: string | null;
   partner_preferences: string | null;
+  father_name?: string | null;
+  father_occupation?: string | null;
+  mother_name?: string | null;
+  mother_occupation?: string | null;
+  siblings_count?: number | null;
+  siblings?: { name?: string; occupation?: string }[] | null;
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason: string | null;
   last_password: string | null;

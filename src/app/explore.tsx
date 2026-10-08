@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -17,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { SupportModal } from '../components/support-modal';
+import { HEIGHT_OPTIONS, POPULAR_CURRENCIES, formatSalary, getCurrencySymbol } from '../lib/formatters';
 
 const STORAGE_URL = 'https://npvmvqminzgbuxibonta.supabase.co/storage/v1/object/public/profile-images/';
 
@@ -38,7 +41,18 @@ export default function MyProfileScreen() {
   const [nativePlace, setNativePlace] = useState('');
   const [occupation, setOccupation] = useState('');
   const [salary, setSalary] = useState('');
+  const [salaryCurrency, setSalaryCurrency] = useState('INR');
+  const [height, setHeight] = useState('');
+  const [fatherName, setFatherName] = useState('');
+  const [fatherOccupation, setFatherOccupation] = useState('');
+  const [motherName, setMotherName] = useState('');
+  const [motherOccupation, setMotherOccupation] = useState('');
+  const [siblingsCount, setSiblingsCount] = useState(0);
+  const [siblings, setSiblings] = useState<{ name: string; occupation: string }[]>([]);
   const [partnerPreferences, setPartnerPreferences] = useState('');
+
+  const [showHeightModal, setShowHeightModal] = useState(false);
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
 
   const fetchBureauDetails = async (bureauId: string) => {
     try {
@@ -82,12 +96,47 @@ export default function MyProfileScreen() {
     }
   }, [profile?.id]);
 
+  const handleSiblingsCountChange = (count: number) => {
+    setSiblingsCount(count);
+    setSiblings((prev) => {
+      const next = [...prev];
+      if (count > next.length) {
+        for (let i = next.length; i < count; i++) {
+          next.push({ name: '', occupation: '' });
+        }
+      } else {
+        next.splice(count);
+      }
+      return next;
+    });
+  };
+
+  const handleSiblingFieldChange = (index: number, field: 'name' | 'occupation', value: string) => {
+    setSiblings((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
   const handleStartEditing = () => {
     if (!profile) return;
     setCurrentPlace(profile.current_place || '');
     setNativePlace(profile.native_place || '');
     setOccupation(profile.occupation || '');
     setSalary(profile.salary ? String(profile.salary) : '');
+    setSalaryCurrency(profile.salary_currency || 'INR');
+    setHeight(profile.height || '');
+    setFatherName(profile.father_name || '');
+    setFatherOccupation(profile.father_occupation || '');
+    setMotherName(profile.mother_name || '');
+    setMotherOccupation(profile.mother_occupation || '');
+    setSiblingsCount(profile.siblings_count || 0);
+    setSiblings(
+      Array.isArray(profile.siblings)
+        ? profile.siblings.map((s) => ({ name: s?.name || '', occupation: s?.occupation || '' }))
+        : []
+    );
     setPartnerPreferences(profile.partner_preferences || '');
     setIsEditing(true);
   };
@@ -103,6 +152,14 @@ export default function MyProfileScreen() {
           native_place: nativePlace || null,
           occupation: occupation || null,
           salary: salary ? Number(salary) : null,
+          salary_currency: salaryCurrency || 'INR',
+          height: height || null,
+          father_name: fatherName || null,
+          father_occupation: fatherOccupation || null,
+          mother_name: motherName || null,
+          mother_occupation: motherOccupation || null,
+          siblings_count: siblingsCount,
+          siblings: siblings,
           partner_preferences: partnerPreferences || null,
         })
         .eq('id', profile.id);
@@ -411,6 +468,17 @@ export default function MyProfileScreen() {
 
             {isEditing ? (
               <View style={styles.editForm}>
+                <Text style={styles.editLabel}>Height</Text>
+                <TouchableOpacity
+                  style={styles.selectBtn}
+                  onPress={() => setShowHeightModal(true)}
+                >
+                  <Text style={height ? styles.selectBtnText : styles.selectBtnPlaceholder}>
+                    {height || 'Select Height'}
+                  </Text>
+                  <Text style={styles.selectChevron}>▼</Text>
+                </TouchableOpacity>
+
                 <Text style={styles.editLabel}>Current City / Location *</Text>
                 <TextInput
                   style={styles.editInput}
@@ -438,15 +506,108 @@ export default function MyProfileScreen() {
                   placeholderTextColor="#999"
                 />
 
-                <Text style={styles.editLabel}>Annual Income (INR/yr)</Text>
+                <Text style={styles.editLabel}>Annual Income</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    style={[styles.selectBtn, { width: 100 }]}
+                    onPress={() => setShowCurrencyModal(true)}
+                  >
+                    <Text style={styles.selectBtnText}>
+                      {getCurrencySymbol(salaryCurrency)} {salaryCurrency}
+                    </Text>
+                    <Text style={styles.selectChevron}>▼</Text>
+                  </TouchableOpacity>
+                  <TextInput
+                    style={[styles.editInput, { flex: 1 }]}
+                    value={salary}
+                    onChangeText={setSalary}
+                    placeholder="e.g. 1500000"
+                    placeholderTextColor="#999"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                {/* Family Details Edit */}
+                <Text style={[styles.editSectionSubtitle, { marginTop: 16 }]}>Family Details</Text>
+                
+                <Text style={styles.editLabel}>Father's Name</Text>
                 <TextInput
                   style={styles.editInput}
-                  value={salary}
-                  onChangeText={setSalary}
-                  placeholder="e.g. 1500000"
+                  value={fatherName}
+                  onChangeText={setFatherName}
+                  placeholder="Father's Full Name"
                   placeholderTextColor="#999"
-                  keyboardType="numeric"
                 />
+
+                <Text style={styles.editLabel}>Father's Occupation</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={fatherOccupation}
+                  onChangeText={setFatherOccupation}
+                  placeholder="e.g. Business / Retired"
+                  placeholderTextColor="#999"
+                />
+
+                <Text style={styles.editLabel}>Mother's Name</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={motherName}
+                  onChangeText={setMotherName}
+                  placeholder="Mother's Full Name"
+                  placeholderTextColor="#999"
+                />
+
+                <Text style={styles.editLabel}>Mother's Occupation</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={motherOccupation}
+                  onChangeText={setMotherOccupation}
+                  placeholder="e.g. Homemaker"
+                  placeholderTextColor="#999"
+                />
+
+                <Text style={styles.editLabel}>Number of Siblings</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  {[0, 1, 2, 3, 4, 5].map((cnt) => (
+                    <TouchableOpacity
+                      key={cnt}
+                      onPress={() => handleSiblingsCountChange(cnt)}
+                      style={[
+                        styles.siblingCountChip,
+                        siblingsCount === cnt && styles.siblingCountChipActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.siblingCountChipText,
+                          siblingsCount === cnt && styles.siblingCountChipTextActive,
+                        ]}
+                      >
+                        {cnt}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {siblings.map((sib, index) => (
+                  <View key={index} style={styles.siblingBox}>
+                    <Text style={styles.siblingTitle}>Sibling #{index + 1}</Text>
+                    <TextInput
+                      style={styles.editInput}
+                      value={sib.name}
+                      onChangeText={(val) => handleSiblingFieldChange(index, 'name', val)}
+                      placeholder="Sibling Name"
+                      placeholderTextColor="#999"
+                    />
+                    <TextInput
+                      style={styles.editInput}
+                      value={sib.occupation}
+                      onChangeText={(val) => handleSiblingFieldChange(index, 'occupation', val)}
+                      placeholder="Sibling Occupation"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                ))}
 
                 <Text style={styles.editLabel}>Partner Preferences</Text>
                 <TextInput
@@ -498,6 +659,11 @@ export default function MyProfileScreen() {
                 </View>
 
                 <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Height</Text>
+                  <Text style={styles.detailValue}>{profile.height || 'Not specified'}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Lives In</Text>
                   <Text style={styles.detailValue}>{profile.current_place || 'Not specified'}</Text>
                 </View>
@@ -523,6 +689,44 @@ export default function MyProfileScreen() {
               </View>
             )}
           </View>
+
+          {/* Family Details View Section */}
+          {!isEditing && (
+            <View style={styles.detailsSection}>
+              <Text style={styles.sectionTitle}>Family Details</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Father's Name</Text>
+                <Text style={styles.detailValue}>{profile.father_name || '—'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Father's Occupation</Text>
+                <Text style={styles.detailValue}>{profile.father_occupation || '—'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Mother's Name</Text>
+                <Text style={styles.detailValue}>{profile.mother_name || '—'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Mother's Occupation</Text>
+                <Text style={styles.detailValue}>{profile.mother_occupation || '—'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Siblings</Text>
+                <Text style={styles.detailValue}>{profile.siblings_count ?? 0}</Text>
+              </View>
+              {profile.siblings && profile.siblings.length > 0 && (
+                <View style={{ marginTop: 8 }}>
+                  {profile.siblings.map((sib, i) => (
+                    <View key={i} style={styles.siblingViewCard}>
+                      <Text style={styles.siblingViewTitle}>Sibling {i + 1}</Text>
+                      <Text style={styles.siblingViewText}>Name: {sib.name || '—'}</Text>
+                      <Text style={styles.siblingViewText}>Occupation: {sib.occupation || '—'}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* My Photos Section */}
           {!isEditing && (
@@ -619,6 +823,70 @@ export default function MyProfileScreen() {
         prefilledEmail={profile.email || ''}
         prefilledPhone={profile.phone || ''}
       />
+
+      {/* Height Selector Modal */}
+      <Modal visible={showHeightModal} animationType="slide" transparent>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowHeightModal(false)}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Height</Text>
+              <TouchableOpacity onPress={() => setShowHeightModal(false)}>
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={HEIGHT_OPTIONS}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.modalItem, height === item.value && styles.modalItemSelected]}
+                  onPress={() => {
+                    setHeight(item.value);
+                    setShowHeightModal(false);
+                  }}
+                >
+                  <Text style={[styles.modalItemText, height === item.value && styles.modalItemTextSelected]}>
+                    {item.label}
+                  </Text>
+                  {height === item.value && <Text style={styles.modalCheck}>✓</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Currency Selector Modal */}
+      <Modal visible={showCurrencyModal} animationType="slide" transparent>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCurrencyModal(false)}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Currency</Text>
+              <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={POPULAR_CURRENCIES}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.modalItem, salaryCurrency === item.code && styles.modalItemSelected]}
+                  onPress={() => {
+                    setSalaryCurrency(item.code);
+                    setShowCurrencyModal(false);
+                  }}
+                >
+                  <Text style={[styles.modalItemText, salaryCurrency === item.code && styles.modalItemTextSelected]}>
+                    {item.label}
+                  </Text>
+                  {salaryCurrency === item.code && <Text style={styles.modalCheck}>✓</Text>}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -948,5 +1216,144 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 14,
+  },
+  selectBtn: {
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#E6E0D5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#FCFAF6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  selectBtnText: {
+    fontSize: 14,
+    color: '#2C1B1F',
+  },
+  selectBtnPlaceholder: {
+    fontSize: 14,
+    color: '#999',
+  },
+  selectChevron: {
+    fontSize: 10,
+    color: '#8B1E3F',
+  },
+  editSectionSubtitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#8B1E3F',
+    marginBottom: 12,
+  },
+  siblingCountChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E6E0D5',
+    backgroundColor: '#FCFAF6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  siblingCountChipActive: {
+    backgroundColor: '#8B1E3F',
+    borderColor: '#8B1E3F',
+  },
+  siblingCountChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
+  siblingCountChipTextActive: {
+    color: '#FFFFFF',
+  },
+  siblingBox: {
+    backgroundColor: '#FAF5EE',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EFEAE2',
+  },
+  siblingTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B1E3F',
+    marginBottom: 8,
+  },
+  siblingViewCard: {
+    backgroundColor: '#FCFAF6',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#EFEAE2',
+  },
+  siblingViewTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B1E3F',
+    marginBottom: 2,
+  },
+  siblingViewText: {
+    fontSize: 13,
+    color: '#4A3E3D',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '60%',
+    paddingBottom: 30,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFEAE2',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2C1B1F',
+  },
+  modalCloseText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B1E3F',
+  },
+  modalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F0EA',
+  },
+  modalItemSelected: {
+    backgroundColor: '#FFF8F6',
+  },
+  modalItemText: {
+    fontSize: 15,
+    color: '#2C1B1F',
+  },
+  modalItemTextSelected: {
+    fontWeight: '700',
+    color: '#8B1E3F',
+  },
+  modalCheck: {
+    fontSize: 16,
+    color: '#8B1E3F',
+    fontWeight: 'bold',
   },
 });

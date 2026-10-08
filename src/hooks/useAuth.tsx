@@ -12,6 +12,7 @@ export interface UserProfile {
   phone: string | null;
   dob: string;
   gender: 'male' | 'female' | 'other';
+  height?: string | null;
   occupation: string | null;
   salary: number | null;
   salary_currency: string;
@@ -20,6 +21,12 @@ export interface UserProfile {
   community: string | null;
   partner_preferences: string | null;
   cover_image_path: string | null;
+  father_name?: string | null;
+  father_occupation?: string | null;
+  mother_name?: string | null;
+  mother_occupation?: string | null;
+  siblings_count?: number | null;
+  siblings?: { name?: string; occupation?: string }[] | null;
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason: string | null;
 }

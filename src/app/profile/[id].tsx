@@ -20,18 +20,26 @@ import { getCachedSignedUrl, getCachedSignedUrls } from '../../lib/photoCache';
 import { ProfileGalleryModal } from '../../components/profile-gallery-modal';
 import { maskPhoneNumber, maskEmail } from '../../lib/contactMask';
 import { triggerInterestNotification, triggerInterestAcceptedNotification } from '../../lib/notifications';
+import { formatSalary } from '../../lib/formatters';
 
 interface ProfileDetail {
   id: string;
   full_name: string;
   dob: string;
   gender: string;
+  height: string | null;
   occupation: string | null;
   current_place: string | null;
   native_place: string | null;
   community: string | null;
   salary: number | null;
   salary_currency: string;
+  father_name: string | null;
+  father_occupation: string | null;
+  mother_name: string | null;
+  mother_occupation: string | null;
+  siblings_count: number | null;
+  siblings: Array<{ name: string; occupation: string }> | null;
   partner_preferences: string | null;
   email: string | null;
   phone: string | null;
@@ -651,6 +659,10 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
                 <Text style={styles.infoValue}>{profile.gender}</Text>
               </View>
               <View style={styles.gridItem}>
+                <Text style={styles.infoLabel}>Height</Text>
+                <Text style={styles.infoValue}>{profile.height || 'Not Specified'}</Text>
+              </View>
+              <View style={styles.gridItem}>
                 <Text style={styles.infoLabel}>Lives In</Text>
                 <Text style={styles.infoValue}>{profile.current_place || 'Not Specified'}</Text>
               </View>
@@ -672,10 +684,48 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
               <View style={styles.gridItem}>
                 <Text style={styles.infoLabel}>Annual Income</Text>
                 <Text style={styles.infoValue}>
-                  {formatSalary(profile.salary, profile.salary_currency)}
+                  {formatSalary(profile.salary, profile.salary_currency) || 'Not Specified'}
                 </Text>
               </View>
             </View>
+          </View>
+
+          {/* Section: Family Details */}
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>Family Details</Text>
+            <View style={styles.grid}>
+              <View style={styles.gridItem}>
+                <Text style={styles.infoLabel}>Father's Name</Text>
+                <Text style={styles.infoValue}>{profile.father_name || '—'}</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.infoLabel}>Father's Occupation</Text>
+                <Text style={styles.infoValue}>{profile.father_occupation || '—'}</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.infoLabel}>Mother's Name</Text>
+                <Text style={styles.infoValue}>{profile.mother_name || '—'}</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.infoLabel}>Mother's Occupation</Text>
+                <Text style={styles.infoValue}>{profile.mother_occupation || '—'}</Text>
+              </View>
+              <View style={styles.gridItem}>
+                <Text style={styles.infoLabel}>Siblings Count</Text>
+                <Text style={styles.infoValue}>{profile.siblings_count != null ? profile.siblings_count : '0'}</Text>
+              </View>
+            </View>
+
+            {Array.isArray(profile.siblings) && profile.siblings.length > 0 && (
+              <View style={{ marginTop: 10, backgroundColor: '#FCFAF6', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#EFEAE2' }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#8B1E3F', textTransform: 'uppercase', marginBottom: 6 }}>Sibling Details</Text>
+                {profile.siblings.map((sib, idx) => (
+                  <Text key={idx} style={{ fontSize: 13, color: '#2C1B1F', marginTop: 4 }}>
+                    • <Text style={{ fontWeight: '600' }}>{sib.name || `Sibling ${idx + 1}`}</Text> {sib.occupation ? `(${sib.occupation})` : ''}
+                  </Text>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Section: Preferences */}
