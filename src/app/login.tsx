@@ -15,6 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { SupportModal } from '../components/support-modal';
+import { sendForgotPasswordOtp, resetPasswordWithOtp } from '../lib/otp-service';
 
 interface LoginScreenProps {
   portalType: 'user' | 'bureau_admin' | 'master_admin';
@@ -214,6 +215,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
         onClose={() => setForgotVisible(false)}
         initialEmail={email}
         themeColor={getThemeColor()}
+        onSuccessPrefillEmail={(e) => setEmail(e)}
       />
     </SafeAreaView>
   );
@@ -420,22 +422,42 @@ function ForgotPasswordModal({
   onClose,
   initialEmail = '',
   themeColor = '#8B1E3F',
+  onSuccessPrefillEmail,
 }: {
   visible: boolean;
   onClose: () => void;
   initialEmail?: string;
   themeColor?: string;
+  onSuccessPrefillEmail?: (email: string) => void;
 }) {
+  const [resetStage, setResetStage] = useState<1 | 2>(1);
   const [resetEmail, setResetEmail] = useState(initialEmail);
+  const [otpCode, setOtpCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (visible && initialEmail) {
+    if (visible) {
       setResetEmail(initialEmail);
+      setResetStage(1);
+      setOtpCode('');
+      setNewPassword('');
+      setConfirmPassword('');
     }
   }, [visible, initialEmail]);
 
-  const handleSendCredentials = async () => {
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setResendTimer((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  const handleRequestOtp = async () => {
     const cleanEmail = resetEmail.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
       Alert.alert('Invalid Email', 'Please enter your registered email address.');
@@ -444,40 +466,66 @@ function ForgotPasswordModal({
 
     setBusy(true);
     try {
-      // 1. Check if email exists in profiles table
-      const { data: profileData, error: profileErr } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .ilike('email', cleanEmail)
-        .limit(1)
-        .maybeSingle();
-
-      if (profileErr) {
-        console.error('Error querying profiles for email:', profileErr.message);
+      const res = await sendForgotPasswordOtp(cleanEmail);
+      if (!res.success) {
+        Alert.alert('Reset Request Error', res.error || 'This email is not registered in our database.');
+        return;
       }
+      setResetEmail(res.email || cleanEmail);
+      setResetStage(2);
+      setResendTimer(30);
+      Alert.alert('Verification Code Sent 📩', `A 6-digit password reset code has been sent to ${res.email || cleanEmail}!`);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to request reset code.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
-      if (!profileData) {
-        Alert.alert(
-          'Email Not Registered',
-          'This email is not registered in our database. Please check your email address or submit a new profile.'
-        );
-        setBusy(false);
+  const handleResetPassword = async () => {
+    const cleanEmail = resetEmail.trim().toLowerCase();
+    const cleanOtp = otpCode.trim();
+
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      Alert.alert('Invalid OTP', 'Please enter the 6-digit OTP code sent to your email.');
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      Alert.alert('Password Length', 'Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const res = await resetPasswordWithOtp(cleanEmail, cleanOtp, newPassword);
+      if (!res.success) {
+        Alert.alert('Reset Failed', res.error || 'Failed to reset password.');
         return;
       }
 
-      // 2. Trigger password reset link / email credentials via Supabase
-      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(cleanEmail);
-      if (resetErr) {
-        Alert.alert('Error', resetErr.message || 'Could not send reset credentials.');
-      } else {
-        Alert.alert(
-          'Login Credentials Sent 📩',
-          'Password reset instructions have been sent to your email inbox!'
-        );
-        onClose();
-      }
+      Alert.alert(
+        'Password Reset Successful! 🎉',
+        'Your password has been updated successfully. You can now sign in with your new password.',
+        [
+          {
+            text: 'Sign In Now',
+            onPress: () => {
+              if (onSuccessPrefillEmail) {
+                onSuccessPrefillEmail(cleanEmail);
+              }
+              onClose();
+            },
+          },
+        ]
+      );
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to send credentials. Please check your connection.');
+      Alert.alert('Error', err?.message || 'Failed to update password.');
     } finally {
       setBusy(false);
     }
@@ -493,35 +541,113 @@ function ForgotPasswordModal({
               <Text style={modalStyles.closeIcon}>✕</Text>
             </TouchableOpacity>
           </View>
-          <Text style={modalStyles.description}>
-            Enter your registered email address below. If your email is registered in our database, we will send your login credentials / reset link to your email inbox.
-          </Text>
-          <Text style={modalStyles.label}>Registered Email Address *</Text>
-          <TextInput
-            style={modalStyles.input}
-            placeholder="e.g. name@example.com"
-            placeholderTextColor="#999"
-            value={resetEmail}
-            onChangeText={setResetEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <View style={modalStyles.btnRow}>
-            <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose} disabled={busy}>
-              <Text style={modalStyles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[modalStyles.submitBtn, { backgroundColor: themeColor }]}
-              onPress={handleSendCredentials}
-              disabled={busy}
-            >
-              {busy ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={modalStyles.submitBtnText}>Send Credentials</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+
+          {resetStage === 1 ? (
+            <View>
+              <Text style={modalStyles.description}>
+                Enter your registered email address below. We will send a 6-digit OTP code to verify your request and reset your password.
+              </Text>
+              <Text style={modalStyles.label}>Registered Email Address *</Text>
+              <TextInput
+                style={modalStyles.input}
+                placeholder="e.g. name@example.com"
+                placeholderTextColor="#999"
+                value={resetEmail}
+                onChangeText={setResetEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <View style={modalStyles.btnRow}>
+                <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose} disabled={busy}>
+                  <Text style={modalStyles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[modalStyles.submitBtn, { backgroundColor: themeColor }]}
+                  onPress={handleRequestOtp}
+                  disabled={busy}
+                >
+                  {busy ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={modalStyles.submitBtnText}>Send Reset Code</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View>
+              <Text style={modalStyles.description}>
+                Enter the 6-digit OTP code sent to <Text style={{ fontWeight: 'bold' }}>{resetEmail}</Text> and enter your new password.
+              </Text>
+
+              <Text style={modalStyles.label}>6-Digit OTP Code *</Text>
+              <TextInput
+                style={[modalStyles.input, { letterSpacing: 4, textAlign: 'center', fontSize: 18, fontWeight: 'bold' }]}
+                placeholder="000000"
+                placeholderTextColor="#999"
+                value={otpCode}
+                onChangeText={setOtpCode}
+                keyboardType="numeric"
+                maxLength={6}
+              />
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <TouchableOpacity
+                  disabled={resendTimer > 0 || busy}
+                  onPress={handleRequestOtp}
+                >
+                  <Text style={{ fontSize: 12, color: resendTimer > 0 ? '#999' : themeColor, fontWeight: '600' }}>
+                    {resendTimer > 0 ? `Resend code in ${resendTimer}s` : 'Resend OTP Code'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setResetStage(1)}>
+                  <Text style={{ fontSize: 12, color: '#666', textDecorationLine: 'underline' }}>Change Email</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={modalStyles.label}>New Password *</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E6E0D5', borderRadius: 12, backgroundColor: '#FCFAF6', paddingRight: 10, marginBottom: 12 }}>
+                <TextInput
+                  style={{ flex: 1, height: 44, paddingHorizontal: 12, fontSize: 14, color: '#2C1B1F' }}
+                  placeholder="Min 6 characters"
+                  placeholderTextColor="#999"
+                  secureTextEntry={!showPassword}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
+                  <Text style={{ fontSize: 13, color: themeColor, fontWeight: '600' }}>{showPassword ? 'Hide' : 'Show'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={modalStyles.label}>Confirm New Password *</Text>
+              <TextInput
+                style={modalStyles.input}
+                placeholder="Re-enter new password"
+                placeholderTextColor="#999"
+                secureTextEntry={!showPassword}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+
+              <View style={modalStyles.btnRow}>
+                <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose} disabled={busy}>
+                  <Text style={modalStyles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[modalStyles.submitBtn, { backgroundColor: themeColor }]}
+                  onPress={handleResetPassword}
+                  disabled={busy}
+                >
+                  {busy ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={modalStyles.submitBtnText}>Reset Password</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </View>
     </Modal>

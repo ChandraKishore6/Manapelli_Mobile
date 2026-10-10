@@ -16,6 +16,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image } from 'expo-image';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { CityAutocompleteInput } from '../components/CityAutocompleteInput';
 
 interface Bureau {
   id: string;
@@ -1597,11 +1598,19 @@ export default function MasterDashboard() {
                     <Text style={styles.label}>Salary Currency</Text>
                     <TextInput style={styles.input} value={editProfSalaryCurr} onChangeText={setEditProfSalaryCurr} />
 
-                    <Text style={styles.label}>Current City Location</Text>
-                    <TextInput style={styles.input} value={editProfCurrPlace} onChangeText={setEditProfCurrPlace} />
+                    <CityAutocompleteInput
+                      label="Current City Location"
+                      placeholder="Search city..."
+                      value={editProfCurrPlace}
+                      onChangeText={setEditProfCurrPlace}
+                    />
 
-                    <Text style={styles.label}>Native Location</Text>
-                    <TextInput style={styles.input} value={editProfNatPlace} onChangeText={setEditProfNatPlace} />
+                    <CityAutocompleteInput
+                      label="Native Location"
+                      placeholder="Search native location..."
+                      value={editProfNatPlace}
+                      onChangeText={setEditProfNatPlace}
+                    />
 
                     <Text style={styles.label}>Contact Phone</Text>
                     <TextInput style={styles.input} value={editProfPhone} onChangeText={setEditProfPhone} keyboardType="phone-pad" />

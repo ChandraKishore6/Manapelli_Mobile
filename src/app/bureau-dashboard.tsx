@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { CityAutocompleteInput } from '../components/CityAutocompleteInput';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -946,11 +947,19 @@ export default function BureauDashboard() {
               </View>
             )}
 
-            <Text style={[styles.label, { marginTop: 16 }]}>Current Location *</Text>
-            <TextInput style={styles.input} value={newMemCurrent} onChangeText={setNewMemCurrent} placeholder="e.g. Hyderabad" placeholderTextColor="#999" />
+            <CityAutocompleteInput
+              label="Current Location *"
+              placeholder="Search city e.g. Hyderabad..."
+              value={newMemCurrent}
+              onChangeText={setNewMemCurrent}
+            />
 
-            <Text style={styles.label}>Native Location</Text>
-            <TextInput style={styles.input} value={newMemNative} onChangeText={setNewMemNative} placeholder="Hometown" placeholderTextColor="#999" />
+            <CityAutocompleteInput
+              label="Native Location"
+              placeholder="Hometown..."
+              value={newMemNative}
+              onChangeText={setNewMemNative}
+            />
 
             <Text style={styles.label}>Occupation</Text>
             <TextInput style={styles.input} value={newMemOcc} onChangeText={setNewMemOcc} placeholder="e.g. Doctor" placeholderTextColor="#999" />
@@ -1096,10 +1105,19 @@ export default function BureauDashboard() {
                     <TextInput style={styles.input} value={editOccupation} onChangeText={setEditOccupation} />
                     <Text style={styles.label}>Salary</Text>
                     <TextInput style={styles.input} value={editSalary} onChangeText={setEditSalary} keyboardType="numeric" />
-                    <Text style={styles.label}>Current Location</Text>
-                    <TextInput style={styles.input} value={editCurrentPlace} onChangeText={setEditCurrentPlace} />
-                    <Text style={styles.label}>Native Location</Text>
-                    <TextInput style={styles.input} value={editNativePlace} onChangeText={setEditNativePlace} />
+                    <CityAutocompleteInput
+                      label="Current Location"
+                      placeholder="Search city..."
+                      value={editCurrentPlace}
+                      onChangeText={setEditCurrentPlace}
+                    />
+
+                    <CityAutocompleteInput
+                      label="Native Location"
+                      placeholder="Search native location..."
+                      value={editNativePlace}
+                      onChangeText={setEditNativePlace}
+                    />
                     <Text style={styles.label}>Contact Phone</Text>
                     <TextInput style={styles.input} value={editPhone} onChangeText={setEditPhone} keyboardType="phone-pad" />
                     <Text style={styles.label}>Contact Email</Text>
