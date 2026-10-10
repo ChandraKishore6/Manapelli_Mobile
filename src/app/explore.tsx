@@ -217,24 +217,63 @@ export default function MyProfileScreen() {
     if (!profile) return;
     setLoadingPhotos(true);
     try {
-      const { data, error } = await supabase
+      const { data: rawProf } = await supabase
+        .from('profiles')
+        .select('cover_image_path, image_paths')
+        .eq('id', profile.id)
+        .maybeSingle();
+
+      const { data } = await supabase
         .from('profile_images')
         .select('id, storage_path, is_cover, sort_order')
         .eq('profile_id', profile.id)
         .order('sort_order');
-      if (error || !data) { setLoadingPhotos(false); return; }
-      if (data.length === 0) { setProfileImages([]); setLoadingPhotos(false); return; }
-      const paths = data.map((img) => img.storage_path);
+
+      const allPaths: string[] = [];
+      if (profile.cover_image_path) allPaths.push(profile.cover_image_path);
+      if (rawProf?.cover_image_path && !allPaths.includes(rawProf.cover_image_path)) {
+        allPaths.push(rawProf.cover_image_path);
+      }
+      if (Array.isArray(rawProf?.image_paths)) {
+        rawProf.image_paths.forEach((p: string) => {
+          if (p && typeof p === 'string' && !allPaths.includes(p)) allPaths.push(p);
+        });
+      }
+      if (data && Array.isArray(data)) {
+        data.forEach((img: any) => {
+          if (img.storage_path && !allPaths.includes(img.storage_path)) allPaths.push(img.storage_path);
+        });
+      }
+
+      if (allPaths.length === 0) {
+        setProfileImages([]);
+        setLoadingPhotos(false);
+        return;
+      }
+
       const { data: signedData } = await supabase.storage
         .from('profile-images')
-        .createSignedUrls(paths, 3600);
+        .createSignedUrls(allPaths, 3600);
+
       const urlMap = new Map<string, string>();
       if (signedData) {
         signedData.forEach((item: any, i: number) => {
-          if (item?.signedUrl) urlMap.set(paths[i], item.signedUrl);
+          if (item?.signedUrl) urlMap.set(allPaths[i], item.signedUrl);
         });
       }
-      setProfileImages(data.map((img) => ({ ...img, signedUrl: urlMap.get(img.storage_path) })));
+
+      const mergedImages = allPaths.map((path, idx) => {
+        const existing = data?.find((d: any) => d.storage_path === path);
+        return {
+          id: existing?.id || `img-${idx}`,
+          storage_path: path,
+          is_cover: idx === 0 || existing?.is_cover || false,
+          sort_order: existing?.sort_order ?? idx,
+          signedUrl: urlMap.get(path) || null,
+        };
+      });
+
+      setProfileImages(mergedImages as any);
     } catch (err) {
       console.error(err);
     } finally {

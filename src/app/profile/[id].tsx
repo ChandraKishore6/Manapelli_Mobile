@@ -94,11 +94,13 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
         .rpc('get_peer_profile', { _id: id })
         .maybeSingle();
 
+      let fetchedCoverPath: string | null = null;
       if (profileError) {
         console.error('Error fetching profile detail:', profileError.message);
-      } else {
+      } else if (profileData) {
         const pData = profileData as ProfileDetail;
         setProfile(pData);
+        fetchedCoverPath = pData.cover_image_path || null;
         
         // Fetch 24h cached signed URL for cover image
         if (pData.cover_image_path) {
@@ -107,27 +109,59 @@ export default function ProfileDetailScreen({ id: propId, onBack: propOnBack }: 
         }
       }
 
-      // 2. Fetch all profile images with 24h photo cache
-      const { data: imagesData, error: imagesError } = await supabase
+      // 2. Fetch all profile images from profile_images table AND profiles.image_paths array
+      const { data: rawProf } = await supabase
+        .from('profiles')
+        .select('cover_image_path, image_paths')
+        .eq('id', id)
+        .maybeSingle();
+
+      const { data: imagesData } = await supabase
         .from('profile_images')
         .select('*')
         .eq('profile_id', id)
         .order('sort_order', { ascending: true });
 
-      if (imagesError) {
-        console.error('Error fetching profile images:', imagesError.message);
-      } else if (imagesData) {
-        const paths = (imagesData as ProfileImage[]).map((img) => img.storage_path);
-        if (paths.length > 0) {
-          const urlMap = await getCachedSignedUrls(paths);
-          const imagesWithUrls = (imagesData as ProfileImage[]).map((img) => ({
-            ...img,
-            signed_url: urlMap[img.storage_path] || null,
-          }));
-          setImages(imagesWithUrls);
-        } else {
-          setImages(imagesData as ProfileImage[]);
-        }
+      const allPaths: string[] = [];
+
+      // Add cover_image_path if present
+      if (fetchedCoverPath) {
+        allPaths.push(fetchedCoverPath);
+      }
+      if (rawProf?.cover_image_path && !allPaths.includes(rawProf.cover_image_path)) {
+        allPaths.push(rawProf.cover_image_path);
+      }
+
+      // Add image_paths array if present
+      if (Array.isArray(rawProf?.image_paths)) {
+        rawProf.image_paths.forEach((p: string) => {
+          if (p && typeof p === 'string' && !allPaths.includes(p)) {
+            allPaths.push(p);
+          }
+        });
+      }
+
+      // Add profile_images table paths if present
+      if (imagesData && Array.isArray(imagesData)) {
+        imagesData.forEach((img: ProfileImage) => {
+          if (img.storage_path && !allPaths.includes(img.storage_path)) {
+            allPaths.push(img.storage_path);
+          }
+        });
+      }
+
+      if (allPaths.length > 0) {
+        const urlMap = await getCachedSignedUrls(allPaths);
+        const imagesWithUrls: ProfileImage[] = allPaths.map((path, idx) => ({
+          id: `img-${idx}`,
+          storage_path: path,
+          is_cover: idx === 0 || path === fetchedCoverPath,
+          sort_order: idx,
+          signed_url: urlMap[path] || null,
+        }));
+        setImages(imagesWithUrls);
+      } else {
+        setImages([]);
       }
 
       // 3. Log profile view into profile_views table automatically
