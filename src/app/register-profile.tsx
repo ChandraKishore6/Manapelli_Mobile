@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { HEIGHT_OPTIONS, POPULAR_CURRENCIES } from '../lib/formatters';
 import { sendRegistrationOtp, verifyRegistrationOtp } from '../lib/otp-service';
+import { CityAutocompleteInput } from '../components/CityAutocompleteInput';
 
 interface Community {
   id: string;
@@ -960,20 +961,16 @@ export default function RegisterProfileScreen({
                 </Text>
               </TouchableOpacity>
 
-              <Text style={styles.label}>Current City / Location *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Where do you live currently?"
-                placeholderTextColor="#999"
+              <CityAutocompleteInput
+                label="Current City / Location *"
+                placeholder="Search city e.g. Hyderabad, Bengaluru..."
                 value={currentPlace}
                 onChangeText={setCurrentPlace}
               />
 
-              <Text style={styles.label}>Native Place (Optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Family's hometown/native place"
-                placeholderTextColor="#999"
+              <CityAutocompleteInput
+                label="Native Place (Optional)"
+                placeholder="Search native hometown..."
                 value={nativePlace}
                 onChangeText={setNativePlace}
               />
