@@ -46,7 +46,7 @@ export async function sendRegistrationOtp(rawEmail: string): Promise<{
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
-    // 4. Upsert OTP into compatibility_entries
+    // 4. Upsert OTP into compatibility_entries with source: 'normal_profile'
     const { error: upsertErr } = await supabase
       .from('compatibility_entries')
       .upsert(
@@ -55,6 +55,7 @@ export async function sendRegistrationOtp(rawEmail: string): Promise<{
           otp_code: otpCode,
           otp_expires_at: otpExpiresAt,
           is_email_verified: false,
+          source: 'normal_profile',
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'email' }
