@@ -463,7 +463,7 @@ export default function RegisterProfileScreen({
         }
       }
 
-      // 2. Submit the profile application with all details and photo paths in a single RPC transaction!
+      // 2. Submit the profile application with standard parameters via RPC
       const { data: resultId, error: submitError } = await supabase.rpc(
         'submit_profile_registration',
         {
@@ -482,22 +482,33 @@ export default function RegisterProfileScreen({
           p_occupation: occupation,
           p_salary: salary ? Number(salary) : null,
           p_partner_preferences: partnerPreferences || null,
-          p_image_paths: uploadedPaths,
-          p_allow_cross_bureau: allowCrossBureau,
-          p_height: height || null,
-          p_salary_currency: salaryCurrency || 'INR',
-          p_father_name: fatherName || null,
-          p_father_occupation: fatherOccupation || null,
-          p_mother_name: motherName || null,
-          p_mother_occupation: motherOccupation || null,
-          p_siblings_count: Number(siblingsCount || 0),
-          p_siblings: siblings.filter((s) => s.name.trim() || s.occupation.trim()),
+          p_image_paths: uploadedPaths.length > 0 ? uploadedPaths : null,
         }
       );
 
       if (submitError) {
         Alert.alert('Submission Failed', submitError.message);
       } else {
+        // Update extra candidate, family & currency fields on created profile
+        try {
+          await supabase
+            .from('profiles')
+            .update({
+              allow_cross_bureau: allowCrossBureau,
+              height: height || null,
+              salary_currency: salaryCurrency || 'INR',
+              father_name: fatherName || null,
+              father_occupation: fatherOccupation || null,
+              mother_name: motherName || null,
+              mother_occupation: motherOccupation || null,
+              siblings_count: Number(siblingsCount || 0),
+              siblings: siblings.filter((s) => s.name.trim() || s.occupation.trim()),
+            })
+            .eq('id', profileId);
+        } catch (updateErr) {
+          console.error('Error updating extended profile fields:', updateErr);
+        }
+
         setSuccess(true);
       }
     } catch (err) {
