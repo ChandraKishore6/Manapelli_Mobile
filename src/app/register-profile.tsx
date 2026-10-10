@@ -483,6 +483,7 @@ export default function RegisterProfileScreen({
           p_salary: salary ? Number(salary) : null,
           p_partner_preferences: partnerPreferences || null,
           p_image_paths: uploadedPaths.length > 0 ? uploadedPaths : null,
+          p_allow_cross_bureau: allowCrossBureau,
         }
       );
 
