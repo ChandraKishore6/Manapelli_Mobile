@@ -19,6 +19,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { HEIGHT_OPTIONS, POPULAR_CURRENCIES } from '../lib/formatters';
+import { sendRegistrationOtp, verifyRegistrationOtp } from '../lib/otp-service';
 
 interface Community {
   id: string;
@@ -70,10 +71,22 @@ export default function RegisterProfileScreen({
   const [dobDate, setDobDate] = useState(new Date(2000, 0, 1));
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Step 1: Email OTP States
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+
+  // Step 2: Password States
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [phone, setPhone] = useState('');
   const [height, setHeight] = useState('');
   const [showHeightModal, setShowHeightModal] = useState(false);
   const [nativePlace, setNativePlace] = useState('');
@@ -98,6 +111,73 @@ export default function RegisterProfileScreen({
   const [reqNotes, setReqNotes] = useState('');
   const [submittingReq, setSubmittingReq] = useState(false);
   const [communityOther, setCommunityOther] = useState('');
+
+  // Resend OTP countdown timer
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setResendTimer((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  const handleSendOtp = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      const res = await sendRegistrationOtp(cleanEmail);
+      if (!res.success) {
+        if (res.isAlreadyRegistered) {
+          Alert.alert(
+            'Account Exists ⚠️',
+            'An account with this email address already exists in ManaPelli. Please sign in.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Go to Sign In', onPress: () => onShowLogin() },
+            ]
+          );
+        } else {
+          Alert.alert('OTP Error', res.error || 'Failed to send verification code.');
+        }
+        return;
+      }
+      setEmail(res.email || cleanEmail);
+      setOtpSent(true);
+      setResendTimer(30);
+      Alert.alert('Verification Code Sent 📩', `A 6-digit verification code has been sent to ${res.email || cleanEmail}.`);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to send verification code.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const cleanOtp = otp.trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      Alert.alert('Invalid OTP', 'Please enter the 6-digit OTP code sent to your email.');
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      const res = await verifyRegistrationOtp(email, cleanOtp);
+      if (!res.success) {
+        Alert.alert('Verification Failed', res.error || 'Invalid OTP code.');
+        return;
+      }
+      setEmailVerified(true);
+      Alert.alert('Email Verified! 🎉', 'Your email address has been verified successfully.');
+      setStep(2);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to verify OTP code.');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
 
   const handleSubmitCommunityRequest = async () => {
     if (!reqCommName.trim()) {
@@ -205,33 +285,34 @@ export default function RegisterProfileScreen({
   }, [selectedCommunityId]);
 
   const handleNextStep = () => {
-    if (step === 1 && !selectedCommunityId) {
-      Alert.alert('Error', 'Please select your community');
-      return;
-    }
-    if (step === 2 && !selectedBureauId) {
-      Alert.alert('Error', 'Please choose a marriage bureau');
-      return;
-    }
-    if (step === 3) {
-      if (!fullName.trim() || !dob || !phone.trim()) {
-        Alert.alert('Error', 'Please fill in all required personal details');
-        return;
-      }
-      if (!email.trim() || !email.includes('@')) {
-        Alert.alert('Email Required', 'Please enter a valid email address. We will send your login credentials to this email address.');
-        return;
-      }
+    if (step === 2) {
       if (!password || password.length < 6) {
         Alert.alert('Password Requirement', 'Please choose a login password of at least 6 characters.');
         return;
       }
-    }
-    if (step === 4 && (!currentPlace || !occupation)) {
-      Alert.alert('Error', 'Please fill in your current location and occupation');
+      if (password !== confirmPassword) {
+        Alert.alert('Password Mismatch', 'Passwords do not match. Please re-enter your password.');
+        return;
+      }
+      setStep(3);
       return;
     }
-    setStep(step + 1);
+    if (step === 3) {
+      if (!selectedCommunityId) {
+        Alert.alert('Community Required', 'Please select your community/caste.');
+        return;
+      }
+      if (selectedCommunityName?.toLowerCase().includes('other') && !communityOther.trim()) {
+        Alert.alert('Community Required', 'Please specify your community name.');
+        return;
+      }
+      if (!selectedBureauId) {
+        Alert.alert('Bureau Required', 'Please choose a marriage bureau.');
+        return;
+      }
+      setStep(4);
+      return;
+    }
   };
 
   const handlePrevStep = () => {
@@ -291,6 +372,32 @@ export default function RegisterProfileScreen({
   };
 
   const handleSubmit = async () => {
+    if (!emailVerified) {
+      Alert.alert('Email Verification Required', 'Please verify your email address first.');
+      setStep(1);
+      return;
+    }
+    if (!password || password.length < 6) {
+      Alert.alert('Password Required', 'Please set a valid password of at least 6 characters.');
+      setStep(2);
+      return;
+    }
+    if (!selectedCommunityId || !selectedBureauId) {
+      Alert.alert('Community & Bureau Required', 'Please select a community and bureau.');
+      setStep(3);
+      return;
+    }
+    if (!fullName.trim() || !dob || !gender) {
+      Alert.alert('Details Required', 'Please fill in candidate full name, date of birth, and gender.');
+      return;
+    }
+    if (!photos.length) {
+      Alert.alert(
+        'Photo Required 📷',
+        'Please upload at least 1 photo to create your profile. Remember, uploading more photos greatly increases your chances of finding a connection!'
+      );
+      return;
+    }
     if (!eulaAccepted) {
       Alert.alert('Terms of Use', 'You must agree to the Terms of Use (EULA) before submitting.');
       return;
@@ -437,20 +544,171 @@ export default function RegisterProfileScreen({
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Register Profile</Text>
-          <Text style={styles.stepIndicator}>Step {step} of 6</Text>
+          <Text style={styles.stepIndicator}>Step {step} of 4</Text>
         </View>
 
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
-          {/* Step 1: Caste / Community Selection */}
+          {/* Step 1: Email Verification */}
           {step === 1 && (
             <View style={styles.formCard}>
-              <Text style={styles.sectionTitle}>Select your Caste</Text>
+              <Text style={styles.sectionTitle}>Verify Email Address</Text>
               <Text style={styles.sectionSubtitle}>
-                ManaPelli matches you within your own community. Please choose your caste to begin.
+                Enter your email address to receive a 6-digit verification code.
               </Text>
 
+              <Text style={styles.label}>Email Address *</Text>
+              <TextInput
+                style={[styles.input, emailVerified && { backgroundColor: '#F3F4F6', color: '#6B7280' }]}
+                placeholder="name@example.com"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={(val) => {
+                  setEmail(val);
+                  setOtpSent(false);
+                  setEmailVerified(false);
+                }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!emailVerified}
+              />
+              <Text style={styles.inputNoteText}>We will send your login credentials to this email address.</Text>
+
+              {!emailVerified ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { marginTop: 12, opacity: sendingOtp ? 0.7 : 1 }]}
+                    onPress={handleSendOtp}
+                    disabled={sendingOtp || (otpSent && resendTimer > 0)}
+                  >
+                    {sendingOtp ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.primaryBtnText}>
+                        {otpSent
+                          ? resendTimer > 0
+                            ? `Resend Code in ${resendTimer}s`
+                            : 'Resend Verification Code'
+                          : 'Send Verification Code'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {otpSent && (
+                    <View style={{ marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#EFEAE2' }}>
+                      <Text style={styles.label}>6-Digit Verification Code *</Text>
+                      <TextInput
+                        style={[styles.input, { letterSpacing: 4, fontSize: 18, fontWeight: '700', textAlign: 'center' }]}
+                        placeholder="123456"
+                        placeholderTextColor="#999"
+                        value={otp}
+                        onChangeText={setOtp}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                      />
+
+                      <TouchableOpacity
+                        style={[styles.primaryBtn, { marginTop: 12, backgroundColor: '#10B981' }]}
+                        onPress={handleVerifyOtp}
+                        disabled={verifyingOtp}
+                      >
+                        {verifyingOtp ? (
+                          <ActivityIndicator color="#fff" />
+                        ) : (
+                          <Text style={styles.primaryBtnText}>Verify Email & Continue</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <View style={{ marginTop: 16, backgroundColor: '#D1FAE5', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 18, marginRight: 8 }}>✅</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#065F46' }}>Email Verified Successfully!</Text>
+                </View>
+              )}
+
+              <View style={{ marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#EFEAE2', alignItems: 'center' }}>
+                <TouchableOpacity onPress={onShowLogin}>
+                  <Text style={{ fontSize: 14, color: '#8B1E3F', fontWeight: '600' }}>
+                    Already registered? Sign In
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Step 2: Set Password */}
+          {step === 2 && (
+            <View style={styles.formCard}>
+              <Text style={styles.sectionTitle}>Set Account Password</Text>
+              <Text style={styles.sectionSubtitle}>
+                Create a secure password of at least 6 characters for signing in.
+              </Text>
+
+              <View style={{ backgroundColor: '#F9FAFB', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: '#6B7280' }}>Verified Email</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>{email}</Text>
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#10B981' }}>✓ Verified</Text>
+              </View>
+
+              <Text style={styles.label}>Password (Min 6 characters) *</Text>
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Enter password"
+                  placeholderTextColor="#999"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                  <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.label}>Confirm Password *</Text>
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Re-enter password"
+                  placeholderTextColor="#999"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeBtn}>
+                  <Text style={styles.eyeText}>{showConfirmPassword ? '🙈' : '👁️'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.btnRow}>
+                <TouchableOpacity style={styles.secondaryBtn} onPress={handlePrevStep}>
+                  <Text style={styles.secondaryBtnText}>Back</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]} onPress={handleNextStep}>
+                  <Text style={styles.primaryBtnText}>Continue</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* Step 3: Caste / Community & Bureau Selection */}
+          {step === 3 && (
+            <View style={styles.formCard}>
+              <Text style={styles.sectionTitle}>Select Community & Bureau</Text>
+              <Text style={styles.sectionSubtitle}>
+                Choose your caste/community and the marriage bureau serving your community.
+              </Text>
+
+              <Text style={[styles.label, { fontSize: 15, fontWeight: '700', color: '#8B1E3F', marginTop: 8 }]}>
+                1. Select Caste / Community *
+              </Text>
               {loadingComms ? (
-                <ActivityIndicator size="large" color="#8B1E3F" style={{ alignSelf: 'center', marginVertical: 40 }} />
+                <ActivityIndicator size="large" color="#8B1E3F" style={{ alignSelf: 'center', marginVertical: 20 }} />
               ) : communities.length === 0 ? (
                 <Text style={styles.errorText}>No active communities are currently configured.</Text>
               ) : (
@@ -481,7 +739,7 @@ export default function RegisterProfileScreen({
               )}
 
               {selectedCommunityName?.toLowerCase().includes('other') && (
-                <View style={{ marginTop: 16 }}>
+                <View style={{ marginTop: 12 }}>
                   <Text style={styles.label}>Please specify your community *</Text>
                   <TextInput
                     style={styles.input}
@@ -505,88 +763,81 @@ export default function RegisterProfileScreen({
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity
-                style={[styles.primaryBtn, { marginTop: 20 }]}
-                onPress={handleNextStep}
-                disabled={!selectedCommunityId || (selectedCommunityName?.toLowerCase().includes('other') && !communityOther.trim())}
-              >
-                <Text style={styles.primaryBtnText}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+              {selectedCommunityId && (
+                <View style={{ marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#EFEAE2' }}>
+                  <Text style={[styles.label, { fontSize: 15, fontWeight: '700', color: '#8B1E3F' }]}>
+                    2. Choose Marriage Bureau *
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>
+                    Bureaus serving {selectedCommunityName}:
+                  </Text>
 
-          {/* Step 2: Bureau Selection */}
-          {step === 2 && (
-            <View style={styles.formCard}>
-              <Text style={styles.sectionTitle}>Choose Your Bureau</Text>
-              <Text style={styles.sectionSubtitle}>
-                Select the marriage bureau serving your selected community ({selectedCommunityName}).
-              </Text>
-
-              {loadingBureaus ? (
-                <ActivityIndicator size="large" color="#8B1E3F" style={{ alignSelf: 'center', marginVertical: 40 }} />
-              ) : bureaus.length === 0 ? (
-                <Text style={styles.errorText}>
-                  No approved bureaus are currently serving the {selectedCommunityName} community.
-                </Text>
-              ) : (
-                <View style={styles.bureauList}>
-                  {bureaus.map((b) => (
-                    <TouchableOpacity
-                      key={b.id}
-                      style={[
-                        styles.bureauItem,
-                        selectedBureauId === b.id && styles.bureauItemActive,
-                      ]}
-                      onPress={() => setSelectedBureauId(b.id)}
-                    >
-                      <View style={styles.bureauRow}>
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={[
-                              styles.bureauName,
-                              selectedBureauId === b.id && styles.bureauTextActive,
-                            ]}
-                          >
-                            {b.name}
-                          </Text>
-                          {b.location && (
-                            <Text
-                              style={[
-                                styles.bureauLocation,
-                                selectedBureauId === b.id && styles.bureauLocationActive,
-                              ]}
-                            >
-                              📍 {b.location}
+                  {loadingBureaus ? (
+                    <ActivityIndicator size="large" color="#8B1E3F" style={{ alignSelf: 'center', marginVertical: 20 }} />
+                  ) : bureaus.length === 0 ? (
+                    <Text style={styles.errorText}>
+                      No approved bureaus are currently serving the {selectedCommunityName} community.
+                    </Text>
+                  ) : (
+                    <View style={styles.bureauList}>
+                      {bureaus.map((b) => (
+                        <TouchableOpacity
+                          key={b.id}
+                          style={[
+                            styles.bureauItem,
+                            selectedBureauId === b.id && styles.bureauItemActive,
+                          ]}
+                          onPress={() => setSelectedBureauId(b.id)}
+                        >
+                          <View style={styles.bureauRow}>
+                            <View style={{ flex: 1 }}>
+                              <Text
+                                style={[
+                                  styles.bureauName,
+                                  selectedBureauId === b.id && styles.bureauTextActive,
+                                ]}
+                              >
+                                {b.name}
+                              </Text>
+                              {b.location && (
+                                <Text
+                                  style={[
+                                    styles.bureauLocation,
+                                    selectedBureauId === b.id && styles.bureauLocationActive,
+                                  ]}
+                                >
+                                  📍 {b.location}
+                                </Text>
+                              )}
+                            </View>
+                            <Text style={styles.bureauProfileCount}>
+                              👥 {b.profile_count || 0} profiles
                             </Text>
-                          )}
-                        </View>
-                        <Text style={styles.bureauProfileCount}>
-                          👥 {b.profile_count || 0} profiles
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.checkboxContainer, { marginTop: 16, marginBottom: 8 }]}
+                    onPress={() => setAllowCrossBureau(!allowCrossBureau)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.checkbox, allowCrossBureau && styles.checkboxChecked]}>
+                      {allowCrossBureau && <Text style={styles.checkboxCheckmark}>✓</Text>}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F2937' }}>
+                        Include my profile in partner bureau matches within my community (Recommended)
+                      </Text>
+                      <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                        Allows verified candidates from trusted partner bureaus in your community to view your profile and connect.
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
               )}
-
-              <TouchableOpacity
-                style={[styles.checkboxContainer, { marginTop: 16, marginBottom: 8 }]}
-                onPress={() => setAllowCrossBureau(!allowCrossBureau)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.checkbox, allowCrossBureau && styles.checkboxChecked]}>
-                  {allowCrossBureau && <Text style={styles.checkboxCheckmark}>✓</Text>}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>
-                    Include my profile in partner bureau matches within my community (Recommended)
-                  </Text>
-                  <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                    Allows verified candidates from trusted partner bureaus in your community to view your profile and connect.
-                  </Text>
-                </View>
-              </TouchableOpacity>
 
               <View style={styles.btnRow}>
                 <TouchableOpacity style={styles.secondaryBtn} onPress={handlePrevStep}>
@@ -595,7 +846,7 @@ export default function RegisterProfileScreen({
                 <TouchableOpacity
                   style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]}
                   onPress={handleNextStep}
-                  disabled={!selectedBureauId}
+                  disabled={!selectedCommunityId || !selectedBureauId}
                 >
                   <Text style={styles.primaryBtnText}>Continue</Text>
                 </TouchableOpacity>
@@ -603,11 +854,15 @@ export default function RegisterProfileScreen({
             </View>
           )}
 
-          {/* Step 3: Personal Details */}
-          {step === 3 && (
+          {/* Step 4: Profile Details & Photos */}
+          {step === 4 && (
             <View style={styles.formCard}>
-              <Text style={styles.sectionTitle}>Personal Details</Text>
+              <Text style={styles.sectionTitle}>Candidate Details & Photos</Text>
+              <Text style={styles.sectionSubtitle}>
+                Provide candidate information, family background, and upload profile photos.
+              </Text>
 
+              {/* Candidate Info */}
               <Text style={styles.label}>Full Name *</Text>
               <TextInput
                 style={styles.input}
@@ -650,7 +905,7 @@ export default function RegisterProfileScreen({
                   value={dobDate}
                   mode="date"
                   display="default"
-                  maximumDate={new Date(new Date().getFullYear() - 18, 0, 1)} // 18+ years constraint
+                  maximumDate={new Date(new Date().getFullYear() - 18, 0, 1)}
                   onChange={onChangeDob}
                 />
               )}
@@ -685,19 +940,7 @@ export default function RegisterProfileScreen({
                 </Modal>
               )}
 
-              <Text style={[styles.label, { marginTop: 14 }]}>Email Address *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="email@example.com"
-                placeholderTextColor="#999"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <Text style={styles.inputNoteText}>We will send your login credentials to this email address.</Text>
-
-              <Text style={styles.label}>Contact Phone Number *</Text>
+              <Text style={[styles.label, { marginTop: 14 }]}>Contact Phone Number *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="+91 XXXXX XXXXX"
@@ -706,38 +949,6 @@ export default function RegisterProfileScreen({
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
               />
-
-              <Text style={styles.label}>Requested Account Password *</Text>
-              <View style={styles.passwordInputContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="Min 6 characters"
-                  placeholderTextColor="#999"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-                  <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.btnRow}>
-                <TouchableOpacity style={styles.secondaryBtn} onPress={handlePrevStep}>
-                  <Text style={styles.secondaryBtnText}>Back</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]} onPress={handleNextStep}>
-                  <Text style={styles.primaryBtnText}>Continue</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {/* Step 4: Professional & Background */}
-          {step === 4 && (
-            <View style={styles.formCard}>
-              <Text style={styles.sectionTitle}>Biodata Details</Text>
 
               <Text style={styles.label}>Height (Optional)</Text>
               <TouchableOpacity
@@ -890,83 +1101,63 @@ export default function RegisterProfileScreen({
                 ))}
               </View>
 
-              <View style={styles.btnRow}>
-                <TouchableOpacity style={styles.secondaryBtn} onPress={handlePrevStep}>
-                  <Text style={styles.secondaryBtnText}>Back</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]} onPress={handleNextStep}>
-                  <Text style={styles.primaryBtnText}>Continue</Text>
-                </TouchableOpacity>
+              {/* Partner Preferences */}
+              <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#EFEAE2' }}>
+                <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 8 }]}>Partner Preferences</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Describe who you are looking for (age, education, expectations)..."
+                  placeholderTextColor="#999"
+                  value={partnerPreferences}
+                  onChangeText={setPartnerPreferences}
+                  multiline
+                  numberOfLines={4}
+                />
               </View>
-            </View>
-          )}
 
-          {/* Step 5: Partner Preferences */}
-          {step === 5 && (
-            <View style={styles.formCard}>
-              <Text style={styles.sectionTitle}>Partner Preferences</Text>
-              <Text style={styles.sectionSubtitle}>
-                Describe who you are looking for (age, education, or community).
-              </Text>
+              {/* Profile Photos */}
+              <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#EFEAE2' }}>
+                <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 4 }]}>Profile Photos *</Text>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 10 }}>
+                  Upload at least 1 photo (Max 5 photos). First image will be set as cover.
+                </Text>
 
-              <Text style={styles.label}>Preferences Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Looking for a well-educated partner from our community..."
-                placeholderTextColor="#999"
-                value={partnerPreferences}
-                onChangeText={setPartnerPreferences}
-                multiline
-                numberOfLines={6}
-              />
+                <View style={{ backgroundColor: '#FFF7ED', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#FFEDD5', marginBottom: 14, flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 18, marginRight: 8 }}>💡</Text>
+                  <Text style={{ flex: 1, fontSize: 12, color: '#9A3412', fontWeight: '500' }}>
+                    Profiles with photos receive up to 5x more response & connection requests!
+                  </Text>
+                </View>
 
-              <View style={styles.btnRow}>
-                <TouchableOpacity style={styles.secondaryBtn} onPress={handlePrevStep}>
-                  <Text style={styles.secondaryBtnText}>Back</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]} onPress={handleNextStep}>
-                  <Text style={styles.primaryBtnText}>Continue</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+                <View style={styles.photoGrid}>
+                  {photos.map((uri, idx) => (
+                    <View key={idx} style={styles.photoWrapper}>
+                      <Image source={{ uri }} style={styles.photoThumb} />
+                      {idx === 0 && (
+                        <View style={styles.coverLabel}>
+                          <Text style={styles.coverLabelText}>COVER</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        style={styles.removePhotoBtn}
+                        onPress={() => handleRemovePhoto(idx)}
+                      >
+                        <Text style={styles.removePhotoText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
 
-          {/* Step 6: Profile Photos */}
-          {step === 6 && (
-            <View style={styles.formCard}>
-              <Text style={styles.sectionTitle}>Add Photos</Text>
-              <Text style={styles.sectionSubtitle}>
-                Upload up to 5 photos. The first image will be set as your cover photo.
-              </Text>
-
-              <View style={styles.photoGrid}>
-                {photos.map((uri, idx) => (
-                  <View key={idx} style={styles.photoWrapper}>
-                    <Image source={{ uri }} style={styles.photoThumb} />
-                    {idx === 0 && (
-                      <View style={styles.coverLabel}>
-                        <Text style={styles.coverLabelText}>COVER</Text>
-                      </View>
-                    )}
-                    <TouchableOpacity
-                      style={styles.removePhotoBtn}
-                      onPress={() => handleRemovePhoto(idx)}
-                    >
-                      <Text style={styles.removePhotoText}>✕</Text>
+                  {photos.length < 5 && (
+                    <TouchableOpacity style={styles.addPhotoCard} onPress={handlePickPhoto}>
+                      <Text style={styles.addPhotoCardIcon}>+</Text>
+                      <Text style={styles.addPhotoCardText}>Add Photo</Text>
                     </TouchableOpacity>
-                  </View>
-                ))}
-
-                {photos.length < 5 && (
-                  <TouchableOpacity style={styles.addPhotoCard} onPress={handlePickPhoto}>
-                    <Text style={styles.addPhotoCardIcon}>+</Text>
-                    <Text style={styles.addPhotoCardText}>Add Photo</Text>
-                  </TouchableOpacity>
-                )}
+                  )}
+                </View>
               </View>
 
               <TouchableOpacity
-                style={styles.checkboxContainer}
+                style={[styles.checkboxContainer, { marginTop: 16 }]}
                 onPress={() => setEulaAccepted(!eulaAccepted)}
                 activeOpacity={0.8}
               >
