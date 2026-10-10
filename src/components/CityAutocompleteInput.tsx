@@ -28,9 +28,22 @@ export function CityAutocompleteInput({
   const [suggestions, setSuggestions] = useState<CityResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const isSelectedRef = useRef(false);
   const debounceTimer = useRef<any>(null);
 
+  const handleTextChange = (text: string) => {
+    isSelectedRef.current = false;
+    onChangeText(text);
+  };
+
   useEffect(() => {
+    // If the value change was triggered by selecting an item, don't re-query
+    if (isSelectedRef.current) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
+
     if (!value || value.trim().length < 2) {
       setSuggestions([]);
       setShowDropdown(false);
@@ -45,8 +58,10 @@ export function CityAutocompleteInput({
       setLoading(true);
       try {
         const results = await searchCities(value);
-        setSuggestions(results);
-        setShowDropdown(results.length > 0);
+        if (!isSelectedRef.current) {
+          setSuggestions(results);
+          setShowDropdown(results.length > 0);
+        }
       } catch (err) {
         console.error('Error fetching city suggestions:', err);
       } finally {
@@ -60,6 +75,7 @@ export function CityAutocompleteInput({
   }, [value]);
 
   const handleSelectCity = (city: CityResult) => {
+    isSelectedRef.current = true;
     onChangeText(city.displayName);
     setShowDropdown(false);
     setSuggestions([]);
@@ -74,11 +90,11 @@ export function CityAutocompleteInput({
           placeholder={placeholder}
           placeholderTextColor="#999"
           value={value}
-          onChangeText={(text) => {
-            onChangeText(text);
-          }}
+          onChangeText={handleTextChange}
           onFocus={() => {
-            if (suggestions.length > 0) setShowDropdown(true);
+            if (suggestions.length > 0 && !isSelectedRef.current) {
+              setShowDropdown(true);
+            }
           }}
         />
         {loading ? (
@@ -87,6 +103,7 @@ export function CityAutocompleteInput({
           <TouchableOpacity
             style={styles.rightIcon}
             onPress={() => {
+              isSelectedRef.current = false;
               onChangeText('');
               setSuggestions([]);
               setShowDropdown(false);
@@ -99,22 +116,21 @@ export function CityAutocompleteInput({
 
       {showDropdown && suggestions.length > 0 && (
         <View style={styles.dropdown}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={(item, index) => `${item.displayName}-${index}`}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => handleSelectCity(item)}
-              >
-                <Text style={styles.itemTitle}>📍 {item.name}</Text>
-                <Text style={styles.itemSub}>
-                  {[item.state, item.country].filter(Boolean).join(', ')}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
+          {suggestions.map((item, index) => (
+            <TouchableOpacity
+              key={`${item.displayName}-${index}`}
+              style={[
+                styles.dropdownItem,
+                index === suggestions.length - 1 && { borderBottomWidth: 0 },
+              ]}
+              onPress={() => handleSelectCity(item)}
+            >
+              <Text style={styles.itemTitle}>📍 {item.name}</Text>
+              <Text style={styles.itemSub}>
+                {[item.state, item.country].filter(Boolean).join(', ')}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
     </View>
