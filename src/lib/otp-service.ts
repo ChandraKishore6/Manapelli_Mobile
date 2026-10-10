@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { sendZeptoMail } from './zeptomail';
+import { sendZeptoMail, validateEmailForBounceProtection } from './zeptomail';
 
 export async function sendRegistrationOtp(rawEmail: string): Promise<{
   success: boolean;
@@ -7,10 +7,11 @@ export async function sendRegistrationOtp(rawEmail: string): Promise<{
   email?: string;
   error?: string;
 }> {
-  const cleanEmail = rawEmail.trim().toLowerCase();
-  if (!cleanEmail || !cleanEmail.includes('@')) {
-    return { success: false, error: 'Please enter a valid email address' };
+  const validation = validateEmailForBounceProtection(rawEmail);
+  if (!validation.isValid) {
+    return { success: false, error: validation.error };
   }
+  const cleanEmail = validation.cleanEmail;
 
   try {
     // 1. Check if email exists in profiles table
@@ -145,10 +146,11 @@ export async function sendForgotPasswordOtp(rawEmail: string): Promise<{
   email?: string;
   error?: string;
 }> {
-  const cleanEmail = rawEmail.trim().toLowerCase();
-  if (!cleanEmail || !cleanEmail.includes('@')) {
-    return { success: false, error: 'Please enter a valid email address' };
+  const validation = validateEmailForBounceProtection(rawEmail);
+  if (!validation.isValid) {
+    return { success: false, error: validation.error };
   }
+  const cleanEmail = validation.cleanEmail;
 
   try {
     // Check if email exists in profiles table
