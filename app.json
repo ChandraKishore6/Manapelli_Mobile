@@ -48,7 +48,8 @@
         }
       ],
       "permissions": [
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "blockedPermissions": [
         "android.permission.READ_MEDIA_IMAGES",
@@ -81,6 +82,13 @@
           "photosPermission": "ManaPelli needs access to your photos to upload profile pictures.",
           "cameraPermission": "ManaPelli needs camera access to take profile pictures.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#8B1E3F"
         }
       ],
       "@react-native-community/datetimepicker"

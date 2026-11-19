@@ -165,12 +165,19 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
         }));
         setMessages(formatted);
 
-        // Mark unread / undelivered messages from this peer as read & delivered
-        await supabase
-          .from('messages')
-          .update({ is_read: true, is_delivered: true })
-          .eq('sender_profile_id', peerProfileId)
-          .eq('receiver_user_id', user.id);
+        // ONLY mark unread messages from this peer as read if there actually are unread messages!
+        // This stops the infinite Realtime UPDATE feedback loop.
+        const hasUnread = msgsData.some(
+          (m: any) => m.sender_profile_id === peerProfileId && (!m.is_read || !m.is_delivered)
+        );
+        if (hasUnread) {
+          await supabase
+            .from('messages')
+            .update({ is_read: true, is_delivered: true })
+            .eq('sender_profile_id', peerProfileId)
+            .eq('receiver_user_id', user.id)
+            .or('is_read.eq.false,is_delivered.eq.false');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -180,15 +187,25 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
   };
 
   useEffect(() => {
-    loadConversationData();
+    if (profile?.id && user?.id && peerProfileId) {
+      loadConversationData();
+    } else {
+      // If user/profile is not available after a moment, clear loading state to prevent infinite freeze
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
   }, [profile?.id, user?.id, peerProfileId]);
 
-  // Realtime Supabase WebSocket Listener (Critical Rule 1)
+  // Realtime Supabase WebSocket Listener
   useEffect(() => {
-    if (!profile?.id || !peerProfileId) return;
+    if (!profile?.id || !user?.id || !peerProfileId) return;
 
+    // Use a unique scoped channel name per conversation to eliminate cross-screen collisions
+    const channelName = `chat:${profile.id}:${peerProfileId}`;
     const channel = supabase
-      .channel('public:messages')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -196,8 +213,24 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
           schema: 'public',
           table: 'messages',
         },
-        (payload) => {
-          // Instantly refresh messages stream when postgres changes occur
+        (payload: any) => {
+          const newRow = payload.new;
+          // Check if this message belongs to this specific conversation
+          const isRelevant =
+            (newRow?.sender_profile_id === peerProfileId && newRow?.receiver_profile_id === profile.id) ||
+            (newRow?.sender_profile_id === profile.id && newRow?.receiver_profile_id === peerProfileId);
+
+          if (!isRelevant) return;
+
+          // If the update is merely our own read-receipt update, update state locally without re-fetching DB
+          if (payload.eventType === 'UPDATE' && newRow?.receiver_user_id === user.id && newRow?.is_read) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === newRow.id ? { ...m, is_read: true, is_delivered: true } : m))
+            );
+            return;
+          }
+
+          // For new incoming messages or peer read-receipts, reload conversation data
           loadConversationData();
         }
       )
@@ -206,7 +239,7 @@ export default function ChatDetailScreen({ peerProfileId: propPeerId, onBack: pr
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.id, peerProfileId]);
+  }, [profile?.id, user?.id, peerProfileId]);
 
   // Send message
   const handleSendMessage = async () => {

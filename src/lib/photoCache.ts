@@ -64,19 +64,91 @@ export async function getCachedSignedUrl(path: string | null | undefined): Promi
 
 /**
  * Batch retrieves 24h cached signed URLs for an array of storage paths.
+ * Optimizes network requests by checking memory and AsyncStorage caches first,
+ * and fetching all uncached URLs in a single Supabase batch request to prevent OkHttp queue saturation.
  */
 export async function getCachedSignedUrls(paths: (string | null | undefined)[]): Promise<Record<string, string>> {
   const result: Record<string, string> = {};
   const validPaths = Array.from(new Set(paths.filter((p): p is string => Boolean(p))));
+  if (validPaths.length === 0) return result;
 
-  await Promise.all(
-    validPaths.map(async (path) => {
-      const url = await getCachedSignedUrl(path);
-      if (url) {
-        result[path] = url;
+  const now = Date.now();
+  const missingPaths: string[] = [];
+
+  // 1. Check in-memory cache first
+  for (const path of validPaths) {
+    const mem = memoryCache.get(path);
+    if (mem && mem.expiresAt > now + 300000) {
+      result[path] = mem.url;
+    } else {
+      missingPaths.push(path);
+    }
+  }
+
+  if (missingPaths.length === 0) {
+    return result;
+  }
+
+  // 2. Batch check AsyncStorage for missing paths
+  const keys = missingPaths.map((p) => `${CACHE_PREFIX}${p}`);
+  const stillMissing: string[] = [];
+  try {
+    const pairs = await AsyncStorage.multiGet(keys);
+    for (let i = 0; i < pairs.length; i++) {
+      const path = missingPaths[i];
+      const raw = pairs[i][1];
+      let foundInStorage = false;
+      if (raw) {
+        try {
+          const parsed: CacheEntry = JSON.parse(raw);
+          if (parsed && parsed.url && parsed.expiresAt > now + 300000) {
+            memoryCache.set(path, parsed);
+            result[path] = parsed.url;
+            foundInStorage = true;
+          }
+        } catch (_) {}
       }
-    })
-  );
+      if (!foundInStorage) {
+        stillMissing.push(path);
+      }
+    }
+  } catch (e) {
+    stillMissing.push(...missingPaths);
+  }
+
+  if (stillMissing.length === 0) {
+    return result;
+  }
+
+  // 3. Batch request all remaining signed URLs from Supabase in ONE single network request
+  try {
+    const { data: batchData, error } = await supabase
+      .storage
+      .from('profile-images')
+      .createSignedUrls(stillMissing, 86400);
+
+    if (!error && batchData) {
+      const storagePairs: [string, string][] = [];
+      batchData.forEach((item: any, idx: number) => {
+        const path = item?.path || stillMissing[idx];
+        const signedUrl = item?.signedUrl;
+        if (path && signedUrl) {
+          const entry: CacheEntry = {
+            url: signedUrl,
+            expiresAt: now + CACHE_DURATION_MS,
+          };
+          memoryCache.set(path, entry);
+          result[path] = signedUrl;
+          storagePairs.push([`${CACHE_PREFIX}${path}`, JSON.stringify(entry)]);
+        }
+      });
+      if (storagePairs.length > 0) {
+        AsyncStorage.multiSet(storagePairs).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error('Error generating batch signed URLs:', err);
+  }
 
   return result;
 }

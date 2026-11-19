@@ -181,8 +181,11 @@ export default function ChatsListScreen({ onBack: propOnBack, onOpenChat: propOn
 
   // Realtime Supabase WebSocket Listener for instant updates
   useEffect(() => {
+    if (!profile?.id) return;
+
+    const channelName = `chats-list:${profile.id}`;
     const channel = supabase
-      .channel('public:messages')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -190,8 +193,16 @@ export default function ChatsListScreen({ onBack: propOnBack, onOpenChat: propOn
           schema: 'public',
           table: 'messages',
         },
-        () => {
-          fetchConversations();
+        (payload: any) => {
+          const newRow = payload.new;
+          // Only refresh if the message actually involves this profile
+          if (
+            newRow?.sender_profile_id === profile.id ||
+            newRow?.receiver_profile_id === profile.id ||
+            payload.eventType === 'DELETE'
+          ) {
+            fetchConversations();
+          }
         }
       )
       .subscribe();

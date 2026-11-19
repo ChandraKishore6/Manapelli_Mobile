@@ -29,6 +29,7 @@ export interface UserProfile {
   siblings?: { name?: string; occupation?: string }[] | null;
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason: string | null;
+  push_token?: string | null;
 }
 
 export interface UserRole {

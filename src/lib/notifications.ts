@@ -26,6 +26,16 @@ export async function registerForPushNotificationsAsync(profileId?: string): Pro
   let token: string | null = null;
 
   try {
+    // Set Android notification channel early so system is ready
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Default ManaPelli Notifications',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#8B1E3F',
+      });
+    }
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -44,22 +54,16 @@ export async function registerForPushNotificationsAsync(profileId?: string): Pro
     });
     token = tokenData.data;
 
-    // Set Android notification channel
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Default ManaPelli Notifications',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#8B1E3F',
-      });
-    }
-
     // Save push_token to profiles if profileId provided
     if (profileId && token) {
-      await supabase
+      const { error: tokenSaveError } = await supabase
         .from('profiles')
         .update({ push_token: token } as any)
         .eq('id', profileId);
+
+      if (tokenSaveError) {
+        console.error('Failed to save push token to database:', tokenSaveError.message);
+      }
     }
   } catch (error) {
     console.error('Error registering for push notifications:', error);
