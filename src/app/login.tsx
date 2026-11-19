@@ -119,7 +119,11 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
           <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 30, 60) }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.headerContainer}>
             <View style={[styles.heartBadge, { backgroundColor: getThemeColor(), shadowColor: getThemeColor() }]}>
               <Text style={styles.heartIcon}>❦</Text>
@@ -147,7 +151,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
               <Text style={styles.label}>
                 {portalType === 'user' ? 'Issued Password' : 'Password'}
               </Text>
-              <TouchableOpacity onPress={() => setForgotVisible(true)}>
+              <TouchableOpacity onPress={() => setForgotVisible(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={[styles.forgotBtnText, { color: getThemeColor() }]}>Forgot password?</Text>
               </TouchableOpacity>
             </View>
@@ -162,7 +166,7 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
                 autoCapitalize="none"
                 autoComplete="password"
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
               </TouchableOpacity>
             </View>
@@ -171,6 +175,8 @@ export default function LoginScreen({ portalType, onShowWelcome, onShowRegister 
               style={[styles.loginButton, { backgroundColor: getThemeColor(), shadowColor: getThemeColor() }]}
               onPress={handleLogin}
               disabled={loading}
+              activeOpacity={0.85}
+              hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
