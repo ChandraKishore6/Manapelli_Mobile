@@ -14,59 +14,39 @@ export async function sendRegistrationOtp(rawEmail: string): Promise<{
   const cleanEmail = validation.cleanEmail;
 
   try {
-    // 1. Check if email exists in profiles table
-    const { data: manaProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .ilike('email', cleanEmail)
-      .maybeSingle();
+    // 1. Generate OTP and check if account already exists via secure database function
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc(
+      'generate_registration_otp',
+      { p_email: cleanEmail }
+    );
 
-    // 2. Check if email exists in compatibility_entries
-    const { data: existingEntry } = await supabase
-      .from('compatibility_entries')
-      .select('id, is_email_verified, step_completed, password_hash')
-      .eq('email', cleanEmail)
-      .maybeSingle();
+    if (rpcErr) {
+      console.error('[OTP] RPC generation error:', rpcErr.message);
+      return { success: false, error: 'Failed to generate verification code. Please try again.' };
+    }
 
-    if (
-      manaProfile ||
-      (existingEntry &&
-        existingEntry.is_email_verified &&
-        (existingEntry.step_completed >= 3 || existingEntry.password_hash))
-    ) {
+    const res = rpcRes as any;
+
+    // 2. If account already exists in profiles or auth.users, prompt user to sign in
+    if (res?.is_already_registered) {
       return {
         success: false,
         isAlreadyRegistered: true,
         email: cleanEmail,
-        error: 'An account with this email already exists in ManaPelli! Please log in.',
+        error: res.message || 'An account with this email already exists in ManaPelli! Please log in.',
       };
     }
 
-    // 3. Generate 6-digit OTP code
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
-
-    // 4. Upsert OTP into compatibility_entries with source: 'normal_profile'
-    const { error: upsertErr } = await supabase
-      .from('compatibility_entries')
-      .upsert(
-        {
-          email: cleanEmail,
-          otp_code: otpCode,
-          otp_expires_at: otpExpiresAt,
-          is_email_verified: false,
-          source: 'normal_profile',
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'email' }
-      );
-
-    if (upsertErr) {
-      console.error('[OTP] Database upsert error:', upsertErr.message);
-      return { success: false, error: 'Failed to generate verification code. Please try again.' };
+    if (!res?.success || !res?.otp_code) {
+      return {
+        success: false,
+        error: res?.error || 'Failed to generate verification code. Please try again.',
+      };
     }
 
-    // 5. Send OTP via ZeptoMail
+    const otpCode = res.otp_code;
+
+    // 3. Send OTP via ZeptoMail
     const htmlBody = `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
         <div style="text-align: center; margin-bottom: 20px;">
@@ -113,28 +93,20 @@ export async function verifyRegistrationOtp(
   }
 
   try {
-    const { data: entry, error: fetchErr } = await supabase
-      .from('compatibility_entries')
-      .select('*')
-      .eq('email', cleanEmail)
-      .maybeSingle();
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc(
+      'verify_registration_otp',
+      { p_email: cleanEmail, p_otp: cleanOtp }
+    );
 
-    if (fetchErr || !entry || !entry.otp_code || entry.otp_code !== cleanOtp) {
-      return { success: false, error: 'Invalid 6-digit OTP code. Please check and try again.' };
+    if (rpcErr) {
+      console.error('[OTP] Verification RPC error:', rpcErr.message);
+      return { success: false, error: 'Verification failed. Please try again.' };
     }
 
-    if (entry.otp_expires_at && new Date(entry.otp_expires_at) < new Date()) {
-      return { success: false, error: 'OTP code has expired. Please request a new verification code.' };
+    const res = rpcRes as any;
+    if (!res?.success) {
+      return { success: false, error: res?.error || 'Invalid or expired OTP code. Please check and try again.' };
     }
-
-    // Mark verified
-    await supabase
-      .from('compatibility_entries')
-      .update({
-        is_email_verified: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('email', cleanEmail);
 
     return { success: true };
   } catch (err: any) {
@@ -154,45 +126,25 @@ export async function sendForgotPasswordOtp(rawEmail: string): Promise<{
   const cleanEmail = validation.cleanEmail;
 
   try {
-    // Check if email exists in profiles table
-    const { data: manaProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .ilike('email', cleanEmail)
-      .maybeSingle();
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc(
+      'generate_password_reset_otp',
+      { p_email: cleanEmail }
+    );
 
-    const { data: entry } = await supabase
-      .from('compatibility_entries')
-      .select('id')
-      .eq('email', cleanEmail)
-      .maybeSingle();
+    if (rpcErr) {
+      console.error('[OTP] Forgot password RPC error:', rpcErr.message);
+      return { success: false, error: 'Failed to request password reset code. Please try again.' };
+    }
 
-    if (!manaProfile && !entry) {
+    const res = rpcRes as any;
+    if (!res?.success || !res?.otp_code) {
       return {
         success: false,
-        error: 'This email is not registered in our database. Please check your email or create a profile.',
+        error: res?.error || 'This email is not registered in our database. Please check your email or create a profile.',
       };
     }
 
-    const resetOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
-
-    const { error: upsertErr } = await supabase
-      .from('compatibility_entries')
-      .upsert(
-        {
-          email: cleanEmail,
-          otp_code: resetOtp,
-          otp_expires_at: expiresAt,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'email' }
-      );
-
-    if (upsertErr) {
-      console.error('[OTP] Forgot password upsert error:', upsertErr.message);
-      return { success: false, error: 'Failed to generate password reset code. Please try again.' };
-    }
+    const resetOtp = res.otp_code;
 
     const htmlBody = `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
@@ -245,35 +197,24 @@ export async function resetPasswordWithOtp(
   }
 
   try {
-    const { data: entry, error: fetchErr } = await supabase
-      .from('compatibility_entries')
-      .select('*')
-      .eq('email', cleanEmail)
-      .maybeSingle();
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc(
+      'reset_password_with_otp',
+      {
+        p_email: cleanEmail,
+        p_otp: cleanOtp,
+        p_new_password: newPassword,
+      }
+    );
 
-    if (fetchErr || !entry || !entry.otp_code || entry.otp_code !== cleanOtp) {
-      return { success: false, error: 'Invalid or missing 6-digit OTP code. Please check and try again.' };
+    if (rpcErr) {
+      console.error('[OTP] Reset password RPC error:', rpcErr.message);
+      return { success: false, error: 'Failed to reset password. Please try again.' };
     }
 
-    if (entry.otp_expires_at && new Date(entry.otp_expires_at) < new Date()) {
-      return { success: false, error: 'OTP code has expired. Please request a new reset code.' };
+    const res = rpcRes as any;
+    if (!res?.success) {
+      return { success: false, error: res?.error || 'Failed to reset password. Please check your OTP code.' };
     }
-
-    // 1. Clear OTP code in database
-    await supabase
-      .from('compatibility_entries')
-      .update({
-        otp_code: null,
-        otp_expires_at: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('email', cleanEmail);
-
-    // 2. Update profiles table last_password column
-    await supabase
-      .from('profiles')
-      .update({ last_password: newPassword })
-      .ilike('email', cleanEmail);
 
     return { success: true };
   } catch (err: any) {
